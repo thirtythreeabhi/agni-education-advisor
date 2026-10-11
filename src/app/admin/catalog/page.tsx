@@ -8,7 +8,7 @@ export default async function CatalogHomePage() {
   const [institutions, programs] = await Promise.all([listInstitutions(), listPrograms()]);
   return <main className="shell">
     <p className="muted"><Link href="/">Agni Education Advisor</Link> · Admin catalog</p>
-    <div style={{display: "flex", justifyContent: "space-between", gap: 16, alignItems: "baseline"}}><h1>University catalog</h1><Link href="/admin/catalog/programs">All programs →</Link></div>
+    <div style={{display: "flex", justifyContent: "space-between", gap: 16, alignItems: "baseline"}}><h1>University catalog</h1><div style={{display: "flex", gap: 12}}><Link href="/admin/catalog/import">Import JSON</Link><Link href="/admin/catalog/programs">All programs →</Link></div></div>
     <p className="muted">Only source-backed catalog records belong here. Unverified data is labelled and is not a confirmed recommendation fact.</p>
     <section className="grid" style={{gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", marginTop: 24}}>
       <div className="card"><h2>Add institution</h2><p className="muted">The first official source is required when creating an institution.</p><form action={createInstitutionAction} className="grid">
