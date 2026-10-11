@@ -57,6 +57,34 @@
       "when": 1791745479383,
       "tag": "0007_futuristic_vampiro",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791749819040,
+      "tag": "0008_fantastic_wrecking_crew",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791749953119,
+      "tag": "0009_fantastic_bug",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791750192024,
+      "tag": "0010_milky_vermin",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791750519508,
+      "tag": "0011_wakeful_felicia_hardy",
+      "breakpoints": true
     }
   ]
 }

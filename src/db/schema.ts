@@ -1,4 +1,5 @@
 import { relations, sql } from "drizzle-orm";
+import { catalogProgramRevisions } from "../modules/catalog/schema";
 import { boolean, check, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const processingStatus = pgEnum("processing_status", ["received", "processing", "processed", "failed"]);
@@ -19,6 +20,14 @@ export const familyAuditEventType = pgEnum("family_audit_event_type", [
   "consultation_profile_rejected",
 ]);
 export const proposalState = pgEnum("proposal_state", ["pending", "conflict", "accepted", "rejected", "unmapped"]);
+export const advisorCaseMode = pgEnum("advisor_case_mode", ["demo", "guest", "private"]);
+export const advisorCaseStatus = pgEnum("advisor_case_status", ["provisional", "ambiguous", "resolved", "expired", "closed"]);
+export const advisorCaseAuthorization = pgEnum("advisor_case_authorization", ["none", "pending", "verified", "denied"]);
+export const advisorCaseEventActor = pgEnum("advisor_case_event_actor", ["caller", "function", "system", "admin"]);
+export const advisorMemoryCategory = pgEnum("advisor_memory_category", ["confirmed_profile", "caller_reported", "preference", "decision", "proposed_change", "unresolved_question", "promised_action", "follow_up_outcome", "discussed_university"]);
+export const advisorMemoryStatus = pgEnum("advisor_memory_status", ["active", "resolved", "superseded", "rejected", "uncertain", "conflicted"]);
+export const advisorMemorySource = pgEnum("advisor_memory_source", ["caller", "function", "webhook_extraction", "admin", "system"]);
+export const advisorRecommendationStatus = pgEnum("advisor_recommendation_status", ["saved", "dismissed"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -86,6 +95,7 @@ export const families = pgTable("families", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerUserId: uuid("owner_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   name: text("name").notNull(),
+  isDemo: boolean("is_demo").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -103,6 +113,7 @@ export const students = pgTable("students", {
   careerGoals: text("career_goals"),
   preferredCountries: text("preferred_countries").array().notNull().default(sql`'{}'::text[]`),
   preferredIntake: text("preferred_intake"),
+  graduationYear: integer("graduation_year"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -172,6 +183,70 @@ export const consultationProfileProposals = pgTable("consultation_profile_propos
   consultationStudentFieldUnique: uniqueIndex("consultation_profile_proposals_consultation_student_field_idx").on(table.consultationId, table.studentId, table.fieldName),
 }));
 
+export const advisorCases = pgTable("advisor_cases", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  caseTokenHash: text("case_token_hash").notNull(),
+  mode: advisorCaseMode("mode").notNull(),
+  status: advisorCaseStatus("status").notNull().default("provisional"),
+  authorization: advisorCaseAuthorization("authorization").notNull().default("none"),
+  compactBrief: jsonb("compact_brief"),
+  ownerUserId: uuid("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+  familyId: uuid("family_id").references(() => families.id, { onDelete: "set null" }),
+  studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  tokenUnique: uniqueIndex("advisor_cases_token_hash_idx").on(table.caseTokenHash),
+}));
+
+export const advisorCaseEvents = pgTable("advisor_case_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  caseId: uuid("case_id").notNull().references(() => advisorCases.id, { onDelete: "cascade" }),
+  sequence: integer("sequence").notNull(),
+  actor: advisorCaseEventActor("actor").notNull(),
+  eventType: text("event_type").notNull(),
+  payload: jsonb("payload").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  caseSequenceUnique: uniqueIndex("advisor_case_events_case_sequence_idx").on(table.caseId, table.sequence),
+}));
+
+export const advisorCaseMemory = pgTable("advisor_case_memory", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  caseId: uuid("case_id").references(() => advisorCases.id, { onDelete: "set null" }),
+  studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
+  sourceConsultationId: uuid("source_consultation_id").references(() => consultations.id, { onDelete: "set null" }),
+  memoryKey: text("memory_key").notNull(),
+  category: advisorMemoryCategory("category").notNull(),
+  status: advisorMemoryStatus("status").notNull().default("active"),
+  source: advisorMemorySource("source").notNull(),
+  statement: text("statement").notNull(),
+  value: jsonb("value"),
+  fingerprint: text("fingerprint").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  fingerprintUnique: uniqueIndex("advisor_case_memory_fingerprint_idx").on(table.fingerprint),
+  targetRequired: check("advisor_case_memory_target_required", sql`${table.caseId} is not null or ${table.studentId} is not null`),
+}));
+
+export const advisorCaseRecommendations = pgTable("advisor_case_recommendations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  caseId: uuid("case_id").notNull().references(() => advisorCases.id, { onDelete: "cascade" }),
+  studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
+  sourceConsultationId: uuid("source_consultation_id").references(() => consultations.id, { onDelete: "set null" }),
+  revisionId: uuid("revision_id").notNull().references(() => catalogProgramRevisions.id, { onDelete: "restrict" }),
+  status: advisorRecommendationStatus("status").notNull().default("saved"),
+  rationale: text("rationale").notNull(),
+  assessment: jsonb("assessment"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  caseRevisionUnique: uniqueIndex("advisor_case_recommendations_case_revision_idx").on(table.caseId, table.revisionId),
+}));
+
 export const familiesRelations = relations(families, ({ one, many }) => ({
   owner: one(users, { fields: [families.ownerUserId], references: [users.id] }),
   students: many(students),
@@ -219,6 +294,9 @@ export type FamilyEducationFinance = typeof familyEducationFinances.$inferSelect
 export type StudentConsultation = typeof studentConsultations.$inferSelect;
 export type FamilyAuditEvent = typeof familyAuditEvents.$inferSelect;
 export type ConsultationProfileProposal = typeof consultationProfileProposals.$inferSelect;
+export type AdvisorCase = typeof advisorCases.$inferSelect;
+export type AdvisorCaseMemory = typeof advisorCaseMemory.$inferSelect;
+export type AdvisorCaseRecommendation = typeof advisorCaseRecommendations.$inferSelect;
 
 // Catalog tables remain authored in the isolated module, but this canonical
 // re-export makes them part of the shared Drizzle schema after integration.

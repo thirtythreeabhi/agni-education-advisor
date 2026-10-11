@@ -3,8 +3,8 @@ import { boolean, check, date, numeric, pgEnum, pgTable, text, timestamp, unique
 import { relations, sql } from "drizzle-orm";
 
 /**
- * This module is intentionally not imported by src/db/schema.ts yet. It can be
- * integrated after the catalog and family-profile branches are merged.
+ * Domain tables remain isolated here; src/db/schema.ts re-exports them as the
+ * canonical Drizzle entrypoint used by the application.
  */
 
 export const catalogDegreeLevel = pgEnum("catalog_degree_level", ["bachelor", "master"]);

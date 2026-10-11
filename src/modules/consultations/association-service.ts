@@ -1,9 +1,10 @@
-import { asc, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, or } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { consultations, consultationExtractions, consultationProfileProposals, familyAuditEvents, families, familyEducationFinances, students, studentConsultations, users } from "@/db/schema";
+import { advisorCaseRecommendations, advisorCases, consultations, consultationExtractions, consultationProfileProposals, familyAuditEvents, families, familyEducationFinances, students, studentConsultations, users } from "@/db/schema";
 import { buildProfileProposals, isProfileField, type FamilyFinanceField } from "./association";
 import { consultationAssociationInputSchema } from "@/modules/families/validation";
 import { z } from "zod";
+import { consolidateConsultationMemory, refreshCompactBrief } from "@/modules/cases/memory";
 
 const resolveProposalInputSchema = z.object({
   proposalId: z.string().uuid(),
@@ -66,7 +67,13 @@ export async function associateConsultationAsAdmin(actorUserId: string, input: u
     if (!student) throw new Error("STUDENT_NOT_FOUND");
     const [existingAssociation] = await tx.select().from(studentConsultations).where(eq(studentConsultations.consultationId, values.consultationId)).limit(1);
     if (existingAssociation) {
-      if (existingAssociation.studentId === values.studentId) return { duplicate: true, studentId: values.studentId };
+      if (existingAssociation.studentId === values.studentId) {
+        const [caseRecord] = await tx.select().from(advisorCases).where(eq(advisorCases.studentId, values.studentId)).orderBy(desc(advisorCases.updatedAt)).limit(1);
+        await consolidateConsultationMemory(tx, { consultationId: values.consultationId, studentId: values.studentId, caseId: caseRecord?.id, analysis: consultation.postCallAnalysis });
+        if (caseRecord) await tx.update(advisorCaseRecommendations).set({ sourceConsultationId: values.consultationId, updatedAt: new Date() }).where(and(eq(advisorCaseRecommendations.caseId, caseRecord.id), isNull(advisorCaseRecommendations.sourceConsultationId)));
+        if (caseRecord) await refreshCompactBrief(tx, caseRecord);
+        return { duplicate: true, studentId: values.studentId };
+      }
       throw new Error("CONSULTATION_ALREADY_ASSOCIATED");
     }
     const extractions = await tx.select().from(consultationExtractions).where(eq(consultationExtractions.consultationId, values.consultationId));
@@ -75,6 +82,10 @@ export async function associateConsultationAsAdmin(actorUserId: string, input: u
     await tx.insert(studentConsultations).values({ studentId: values.studentId, consultationId: values.consultationId, associatedByUserId: actorUserId });
     await tx.update(consultations).set({ associationStatus: "associated", updatedAt: new Date() }).where(eq(consultations.id, values.consultationId));
     if (proposals.length) await tx.insert(consultationProfileProposals).values(proposals.map((proposal) => ({ ...proposal, consultationId: values.consultationId, studentId: values.studentId })));
+    const [caseRecord] = await tx.select().from(advisorCases).where(eq(advisorCases.studentId, values.studentId)).orderBy(desc(advisorCases.updatedAt)).limit(1);
+    await consolidateConsultationMemory(tx, { consultationId: values.consultationId, studentId: values.studentId, caseId: caseRecord?.id, analysis: consultation.postCallAnalysis });
+    if (caseRecord) await tx.update(advisorCaseRecommendations).set({ sourceConsultationId: values.consultationId, updatedAt: new Date() }).where(and(eq(advisorCaseRecommendations.caseId, caseRecord.id), isNull(advisorCaseRecommendations.sourceConsultationId)));
+    if (caseRecord) await refreshCompactBrief(tx, caseRecord);
     await tx.insert(familyAuditEvents).values([
       { familyId: student.familyId, studentId: values.studentId, consultationId: values.consultationId, actorUserId, eventType: "consultation_associated", changes: { source: "admin_review" } },
       { familyId: student.familyId, studentId: values.studentId, consultationId: values.consultationId, actorUserId, eventType: "consultation_profile_proposed", changes: { proposalCount: proposals.length } },

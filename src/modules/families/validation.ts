@@ -19,6 +19,7 @@ export const studentInputSchema = z.object({
   careerGoals: optionalText,
   preferredCountries: z.array(z.string().trim().min(2).max(100)).max(30).default([]).transform((countries) => [...new Set(countries)]),
   preferredIntake: optionalText,
+  graduationYear: z.number().int().min(1900).max(2200).nullable().optional(),
 });
 
 export const educationFinancesInputSchema = z.object({

@@ -1,9 +1,10 @@
-import { eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { consultationExtractions, consultations } from "@/db/schema";
+import { advisorCaseRecommendations, advisorCases, consultationExtractions, consultations, studentConsultations } from "@/db/schema";
 import { agniWebhookSchema, type AgniWebhook } from "@/lib/agni-schema";
 import { normalizeExtractedFields } from "@/lib/normalization";
 import { stripRecordingAccessTokens } from "@/lib/security";
+import { consolidateConsultationMemory, refreshCompactBrief } from "@/modules/cases/memory";
 
 type DbTransaction = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 
@@ -58,6 +59,14 @@ export async function persistAgniWebhook(tx: DbTransaction, parsed: AgniWebhook)
       target: [consultationExtractions.consultationId, consultationExtractions.fieldName],
       set: { fieldType: sql`excluded.field_type`, originalValue: sql`excluded.original_value`, normalizedValue: sql`excluded.normalized_value`, state: sql`excluded.state` },
     });
+  }
+  const [association] = await tx.select({ studentId: studentConsultations.studentId })
+    .from(studentConsultations).where(eq(studentConsultations.consultationId, consultationId!)).limit(1);
+  if (association) {
+    const [caseRecord] = await tx.select().from(advisorCases).where(eq(advisorCases.studentId, association.studentId)).orderBy(desc(advisorCases.updatedAt)).limit(1);
+    await consolidateConsultationMemory(tx, { consultationId: consultationId!, studentId: association.studentId, caseId: caseRecord?.id, analysis: safeAnalysis });
+    if (caseRecord) await tx.update(advisorCaseRecommendations).set({ sourceConsultationId: consultationId!, updatedAt: new Date() }).where(and(eq(advisorCaseRecommendations.caseId, caseRecord.id), isNull(advisorCaseRecommendations.sourceConsultationId)));
+    if (caseRecord) await refreshCompactBrief(tx, caseRecord);
   }
   await tx.update(consultations).set({ processingStatus: "processed", updatedAt: new Date() }).where(eq(consultations.id, consultationId!));
   return { consultationId: consultationId!, duplicate: false };

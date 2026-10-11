@@ -1,6 +1,6 @@
 # University catalog integration notes
 
-The catalog is deliberately isolated under `src/modules/catalog`. Its Drizzle tables are not exported from `src/db/schema.ts` yet, and this branch does not modify `drizzle.config.ts` or migrations. The admin pages and import APIs therefore become runnable against the catalog tables only after the integration migration is generated and applied to an explicitly selected local/test database.
+The catalog remains isolated under `src/modules/catalog`, while its Drizzle tables are re-exported through `src/db/schema.ts` for the application and advisor functions. The catalog and recommendation migrations must still be generated and applied only to an explicitly selected local/test database.
 
 ## Data integrity
 
@@ -16,12 +16,11 @@ Imports always create `unverified` revisions. Review must move a revision throug
 
 ## Merge steps
 
-After the family and catalog branches are merged:
+For a new environment:
 
-1. Export the catalog tables/enums from `src/modules/catalog/schema.ts` through the shared Drizzle schema composition chosen by the integration branch.
-2. Generate a new migration from the merged schema. Do not edit an already-applied migration.
-3. Review the generated SQL, including the requirement and fee-key unique indexes and foreign-key delete behavior.
-4. Apply it only to the selected local or isolated test database, then run the catalog database integration tests with `TEST_DATABASE_URL` set.
-5. Keep Neon/Vercel configuration and deployment outside this branch.
+1. Generate a migration from the merged schema. Do not edit an already-applied migration.
+2. Review the generated SQL, including the requirement, fee-key, and case-recommendation unique indexes and foreign-key delete behavior.
+3. Apply it only to the selected local or isolated test database, then run the catalog and advisory database integration tests with `TEST_DATABASE_URL` set.
+4. Keep Neon/Vercel configuration and deployment outside this branch.
 
 The current unit tests run without a database. Database integration coverage is intentionally blocked until the merge migration exists and an isolated `TEST_DATABASE_URL` is provided.

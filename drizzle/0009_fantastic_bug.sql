@@ -1,0 +1,1 @@
+ALTER TABLE "families" ADD COLUMN "is_demo" boolean DEFAULT false NOT NULL;
