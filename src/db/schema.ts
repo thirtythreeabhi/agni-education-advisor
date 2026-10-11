@@ -5,6 +5,16 @@ export const processingStatus = pgEnum("processing_status", ["received", "proces
 export const associationStatus = pgEnum("association_status", ["unassociated", "associated"]);
 export const extractionState = pgEnum("extraction_state", ["confirmed", "missing", "review"]);
 export const userRole = pgEnum("user_role", ["admin", "user"]);
+export const financeFieldState = pgEnum("finance_field_state", ["confirmed", "unknown", "review"]);
+export const familyAuditEventType = pgEnum("family_audit_event_type", [
+  "family_created",
+  "family_updated",
+  "student_created",
+  "student_updated",
+  "education_finances_updated",
+  "consultation_associated",
+  "consultation_disassociated",
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -68,7 +78,102 @@ export const consultationExtractionsRelations = relations(consultationExtraction
   consultation: one(consultations, { fields: [consultationExtractions.consultationId], references: [consultations.id] }),
 }));
 
+export const families = pgTable("families", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerUserId: uuid("owner_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const students = pgTable("students", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  familyId: uuid("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name"),
+  currentGrade: text("current_grade"),
+  schoolName: text("school_name"),
+  academicSummary: text("academic_summary"),
+  desiredDegree: text("desired_degree"),
+  careerGoals: text("career_goals"),
+  preferredCountries: text("preferred_countries").array().notNull().default(sql`'{}'::text[]`),
+  preferredIntake: text("preferred_intake"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const familyEducationFinances = pgTable("family_education_finances", {
+  familyId: uuid("family_id").primaryKey().references(() => families.id, { onDelete: "cascade" }),
+  annualBudgetMinor: integer("annual_budget_minor"),
+  annualBudgetCurrency: text("annual_budget_currency"),
+  annualBudgetState: financeFieldState("annual_budget_state").notNull().default("unknown"),
+  fundingSource: text("funding_source"),
+  fundingSourceState: financeFieldState("funding_source_state").notNull().default("unknown"),
+  financialAidNeeded: boolean("financial_aid_needed"),
+  financialAidState: financeFieldState("financial_aid_state").notNull().default("unknown"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  budgetNonNegative: check("family_education_finances_budget_non_negative", sql`${table.annualBudgetMinor} is null or ${table.annualBudgetMinor} >= 0`),
+}));
+
+export const studentConsultations = pgTable("student_consultations", {
+  studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+  consultationId: uuid("consultation_id").notNull().references(() => consultations.id, { onDelete: "cascade" }),
+  associatedByUserId: uuid("associated_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  associatedAt: timestamp("associated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  studentConsultationPrimaryKey: uniqueIndex("student_consultations_student_consultation_idx").on(table.studentId, table.consultationId),
+}));
+
+export const familyAuditEvents = pgTable("family_audit_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  familyId: uuid("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
+  consultationId: uuid("consultation_id").references(() => consultations.id, { onDelete: "set null" }),
+  eventType: familyAuditEventType("event_type").notNull(),
+  changes: jsonb("changes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const familiesRelations = relations(families, ({ one, many }) => ({
+  owner: one(users, { fields: [families.ownerUserId], references: [users.id] }),
+  students: many(students),
+  finances: one(familyEducationFinances),
+  auditEvents: many(familyAuditEvents),
+}));
+
+export const studentsRelations = relations(students, ({ one, many }) => ({
+  family: one(families, { fields: [students.familyId], references: [families.id] }),
+  consultations: many(studentConsultations),
+  auditEvents: many(familyAuditEvents),
+}));
+
+export const familyEducationFinancesRelations = relations(familyEducationFinances, ({ one }) => ({
+  family: one(families, { fields: [familyEducationFinances.familyId], references: [families.id] }),
+}));
+
+export const studentConsultationsRelations = relations(studentConsultations, ({ one }) => ({
+  student: one(students, { fields: [studentConsultations.studentId], references: [students.id] }),
+  consultation: one(consultations, { fields: [studentConsultations.consultationId], references: [consultations.id] }),
+  associatedBy: one(users, { fields: [studentConsultations.associatedByUserId], references: [users.id] }),
+}));
+
+export const familyAuditEventsRelations = relations(familyAuditEvents, ({ one }) => ({
+  family: one(families, { fields: [familyAuditEvents.familyId], references: [families.id] }),
+  actor: one(users, { fields: [familyAuditEvents.actorUserId], references: [users.id] }),
+  student: one(students, { fields: [familyAuditEvents.studentId], references: [students.id] }),
+  consultation: one(consultations, { fields: [familyAuditEvents.consultationId], references: [consultations.id] }),
+}));
+
 export const schemaDefaults = sql`now()`;
 
 export type Consultation = typeof consultations.$inferSelect;
 export type ConsultationExtraction = typeof consultationExtractions.$inferSelect;
+export type Family = typeof families.$inferSelect;
+export type Student = typeof students.$inferSelect;
+export type FamilyEducationFinance = typeof familyEducationFinances.$inferSelect;
+export type StudentConsultation = typeof studentConsultations.$inferSelect;
+export type FamilyAuditEvent = typeof familyAuditEvents.$inferSelect;
