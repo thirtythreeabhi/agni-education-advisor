@@ -18,6 +18,9 @@ describe("family domain validation", () => {
     expect(() => educationFinancesInputSchema.parse({ annualBudgetMinor: -1 })).toThrow();
     expect(() => educationFinancesInputSchema.parse({ annualBudgetCurrency: "US" })).toThrow();
     expect(() => educationFinancesInputSchema.parse({ educationSavingsInr: -1 })).toThrow();
+    expect(() => educationFinancesInputSchema.parse({ educationSavingsInr: 100000, educationSavingsState: "unknown" })).toThrow(/Unknown/);
+    expect(() => educationFinancesInputSchema.parse({ educationSavingsState: "confirmed" })).toThrow(/without an amount/);
+    expect(educationFinancesInputSchema.parse({ educationSavingsInr: 100000, educationSavingsState: "confirmed" })).toMatchObject({ educationSavingsInr: 100000 });
   });
 
   it("keeps student academic and planning fields bounded", () => {

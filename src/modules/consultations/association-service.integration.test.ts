@@ -64,9 +64,9 @@ describeDatabase("admin consultation association", () => {
     const conflict = proposals.find((proposal) => proposal.fieldName === "current_grade");
     const pending = proposals.find((proposal) => proposal.fieldName === "desired_degree");
     expect(conflict?.state).toBe("conflict");
-    await resolveProfileProposal(adminUserId, { proposalId: conflict!.id, decision: "reject" });
-    await resolveProfileProposal(adminUserId, { proposalId: pending!.id, decision: "accept" });
+    await resolveProfileProposal(adminUserId, { proposalId: conflict!.id, decision: "keep_existing" });
+    await resolveProfileProposal(adminUserId, { proposalId: pending!.id, decision: "apply_corrected", correctedValue: "Computer Science and AI" });
     const [student] = await getDb().select({ currentGrade: students.currentGrade, desiredDegree: students.desiredDegree }).from(students).where(and(eq(students.id, studentId), eq(students.familyId, familyId)));
-    expect(student).toEqual({ currentGrade: "12", desiredDegree: "Computer Science" });
+    expect(student).toEqual({ currentGrade: "12", desiredDegree: "Computer Science and AI" });
   });
 });

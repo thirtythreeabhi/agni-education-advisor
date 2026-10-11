@@ -29,12 +29,14 @@ export async function resolveProfileProposalAction(proposalId: string, _previous
   const actorUserId = await adminId();
   if (!actorUserId) return { error: "Admin access is required to resolve profile proposals." };
   try {
-    await resolveProfileProposal(actorUserId, { proposalId, decision: String(formData.get("decision") ?? "") });
+    await resolveProfileProposal(actorUserId, { proposalId, decision: String(formData.get("decision") ?? ""), correctedValue: String(formData.get("correctedValue") ?? "").trim() || undefined });
     return { success: true };
   } catch (error) {
-    if (error instanceof z.ZodError) return { error: "Choose accept or reject." };
+    if (error instanceof z.ZodError) return { error: "Choose a valid resolution." };
     if (error instanceof Error && error.message === "PROPOSAL_NOT_MAPPABLE") return { error: "This extracted field needs manual mapping before it can be applied." };
     if (error instanceof Error && error.message === "PROPOSAL_VALUE_MISSING") return { error: "The proposed value is missing and cannot be applied." };
+    if (error instanceof Error && error.message === "CORRECTED_VALUE_REQUIRED") return { error: "Enter a corrected value before applying it." };
+    if (error instanceof Error && error.message === "PROPOSAL_VALUE_INVALID") return { error: "The corrected value is not valid for this field." };
     return { error: "Unable to resolve this proposal." };
   }
 }

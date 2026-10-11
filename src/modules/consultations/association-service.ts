@@ -7,7 +7,8 @@ import { z } from "zod";
 
 const resolveProposalInputSchema = z.object({
   proposalId: z.string().uuid(),
-  decision: z.enum(["accept", "reject"]),
+  decision: z.enum(["keep_existing", "reject_extracted", "apply_corrected"]),
+  correctedValue: z.unknown().optional(),
 });
 
 type AdminTransaction = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
@@ -31,7 +32,7 @@ function coerceStudentValue(fieldName: string, value: unknown) {
 
 function coerceFinanceValue(_fieldName: FamilyFinanceField, value: unknown) {
   if (value === null || value === undefined || value === "") throw new Error("PROPOSAL_VALUE_MISSING");
-  const numberValue = typeof value === "number" ? value : typeof value === "string" && /^\d+$/.test(value.trim()) ? Number(value) : NaN;
+  const numberValue = typeof value === "number" ? value : typeof value === "string" && /^[₹,\s\d]+$/.test(value.trim()) ? Number(value.replace(/[₹,\s,]/g, "")) : NaN;
   if (!Number.isSafeInteger(numberValue) || numberValue < 0) throw new Error("PROPOSAL_VALUE_INVALID");
   return numberValue;
 }
@@ -89,27 +90,29 @@ export async function resolveProfileProposal(actorUserId: string, input: unknown
     const [row] = await tx.select({ proposal: consultationProfileProposals, familyId: families.id }).from(consultationProfileProposals).innerJoin(students, eq(consultationProfileProposals.studentId, students.id)).innerJoin(families, eq(students.familyId, families.id)).where(eq(consultationProfileProposals.id, values.proposalId)).limit(1);
     if (!row) throw new Error("PROPOSAL_NOT_FOUND");
     if (row.proposal.state === "accepted" || row.proposal.state === "rejected") return { idempotent: true, state: row.proposal.state };
-    if (values.decision === "reject") {
+    if (values.decision === "keep_existing" || values.decision === "reject_extracted") {
       await tx.update(consultationProfileProposals).set({ state: "rejected", resolvedByUserId: actorUserId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(consultationProfileProposals.id, values.proposalId));
-      await tx.insert(familyAuditEvents).values({ familyId: row.familyId, studentId: row.proposal.studentId, consultationId: row.proposal.consultationId, actorUserId, eventType: "consultation_profile_rejected", changes: { proposalId: values.proposalId, fieldName: row.proposal.fieldName } });
+      await tx.insert(familyAuditEvents).values({ familyId: row.familyId, studentId: row.proposal.studentId, consultationId: row.proposal.consultationId, actorUserId, eventType: "consultation_profile_rejected", changes: { proposalId: values.proposalId, fieldName: row.proposal.fieldName, decision: values.decision, existingValue: row.proposal.existingValue, extractedValue: row.proposal.proposedValue } });
       return { idempotent: false, state: "rejected" as const };
     }
+    if (values.decision !== "apply_corrected") throw new Error("PROPOSAL_DECISION_INVALID");
     if (row.proposal.state === "unmapped") throw new Error("PROPOSAL_NOT_MAPPABLE");
+    if (values.correctedValue === undefined || values.correctedValue === null || values.correctedValue === "") throw new Error("CORRECTED_VALUE_REQUIRED");
     if (row.proposal.familyFinanceFieldName) {
-      const value = coerceFinanceValue(row.proposal.familyFinanceFieldName as FamilyFinanceField, row.proposal.proposedValue);
+      const value = coerceFinanceValue(row.proposal.familyFinanceFieldName as FamilyFinanceField, values.correctedValue);
       const existing = await tx.select().from(familyEducationFinances).where(eq(familyEducationFinances.familyId, row.familyId)).limit(1);
       if (existing[0]) await tx.update(familyEducationFinances).set({ [row.proposal.familyFinanceFieldName]: value, [`${row.proposal.familyFinanceFieldName.replace(/Inr$/, "")}State`]: "confirmed", updatedAt: new Date() }).where(eq(familyEducationFinances.familyId, row.familyId));
       else await tx.insert(familyEducationFinances).values({ familyId: row.familyId, [row.proposal.familyFinanceFieldName]: value, [`${row.proposal.familyFinanceFieldName.replace(/Inr$/, "")}State`]: "confirmed" });
       await tx.update(consultationProfileProposals).set({ state: "accepted", resolvedByUserId: actorUserId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(consultationProfileProposals.id, values.proposalId));
-      await tx.insert(familyAuditEvents).values({ familyId: row.familyId, studentId: row.proposal.studentId, consultationId: row.proposal.consultationId, actorUserId, eventType: "consultation_profile_accepted", changes: { proposalId: values.proposalId, fieldName: row.proposal.familyFinanceFieldName, from: row.proposal.existingValue, to: value } });
+      await tx.insert(familyAuditEvents).values({ familyId: row.familyId, studentId: row.proposal.studentId, consultationId: row.proposal.consultationId, actorUserId, eventType: "consultation_profile_accepted", changes: { proposalId: values.proposalId, decision: values.decision, fieldName: row.proposal.familyFinanceFieldName, from: row.proposal.existingValue, extractedValue: row.proposal.proposedValue, to: value } });
       return { idempotent: false, state: "accepted" as const };
     }
     if (!row.proposal.studentFieldName || !isProfileField(row.proposal.studentFieldName)) throw new Error("PROPOSAL_NOT_MAPPABLE");
-    const value = coerceStudentValue(row.proposal.studentFieldName, row.proposal.proposedValue);
+    const value = coerceStudentValue(row.proposal.studentFieldName, values.correctedValue);
     const [student] = await tx.update(students).set({ [row.proposal.studentFieldName]: value, updatedAt: new Date() }).where(eq(students.id, row.proposal.studentId)).returning();
     await tx.update(consultationProfileProposals).set({ state: "accepted", resolvedByUserId: actorUserId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(consultationProfileProposals.id, values.proposalId));
     await tx.insert(familyAuditEvents).values([
-      { familyId: row.familyId, studentId: row.proposal.studentId, consultationId: row.proposal.consultationId, actorUserId, eventType: "consultation_profile_accepted", changes: { proposalId: values.proposalId, fieldName: row.proposal.studentFieldName, from: row.proposal.existingValue, to: value } },
+      { familyId: row.familyId, studentId: row.proposal.studentId, consultationId: row.proposal.consultationId, actorUserId, eventType: "consultation_profile_accepted", changes: { proposalId: values.proposalId, decision: values.decision, fieldName: row.proposal.studentFieldName, from: row.proposal.existingValue, extractedValue: row.proposal.proposedValue, to: value } },
       { familyId: row.familyId, studentId: row.proposal.studentId, actorUserId, eventType: "student_updated", changes: { source: "consultation_profile_proposal", proposalId: values.proposalId } },
     ]);
     return { idempotent: false, state: "accepted" as const, student };

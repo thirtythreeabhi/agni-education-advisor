@@ -36,6 +36,16 @@ export const educationFinancesInputSchema = z.object({
   financialAidNeeded: z.boolean().nullable().optional(),
   financialAidState: z.enum(["confirmed", "unknown", "review"]).default("unknown"),
   notes: optionalText.nullable().optional(),
+}).superRefine((values, ctx) => {
+  for (const [amount, state, name] of [
+    [values.annualBudgetMinor, values.annualBudgetState, "Annual budget"],
+    [values.educationSavingsInr, values.educationSavingsState, "Education savings"],
+    [values.proposedLoanInr, values.proposedLoanState, "Proposed loan"],
+    [values.annualHouseholdIncomeInr, values.annualHouseholdIncomeState, "Annual household income"],
+  ] as const) {
+    if (amount !== null && amount !== undefined && state === "unknown") ctx.addIssue({ code: "custom", path: [name], message: `${name} cannot be marked Unknown when an amount is present.` });
+    if ((amount === null || amount === undefined) && state === "confirmed") ctx.addIssue({ code: "custom", path: [name], message: `${name} cannot be Confirmed without an amount.` });
+  }
 });
 
 export const consultationAssociationInputSchema = z.object({
