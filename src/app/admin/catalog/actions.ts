@@ -7,7 +7,7 @@ import {
   createAcademicRequirement,
   createEvidenceSource,
   createIntake,
-  createInstitution,
+  createInstitutionWithSource,
   createProgram,
   createProgramFee,
   createProgramRevision,
@@ -30,17 +30,18 @@ function dateValue(formData: FormData, name: string) {
 
 export async function createInstitutionAction(formData: FormData) {
   await requireCatalogAdmin();
-  const source = await createEvidenceSource({
-    url: text(formData, "sourceUrl"),
-    publisher: text(formData, "sourcePublisher"),
-    authorityType: text(formData, "authorityType") as "university" | "government" | "accreditor" | "exam_body" | "other_official",
-    retrievedAt: text(formData, "sourceRetrievedAt"),
-  });
-  const institution = await createInstitution({
-    stableKey: text(formData, "stableKey"),
-    officialName: text(formData, "officialName"),
-    countryCode: text(formData, "countryCode").toUpperCase(),
-    sourceId: source.id,
+  const institution = await createInstitutionWithSource({
+    institution: {
+      stableKey: text(formData, "stableKey"),
+      officialName: text(formData, "officialName"),
+      countryCode: text(formData, "countryCode").toUpperCase(),
+    },
+    source: {
+      url: text(formData, "sourceUrl"),
+      publisher: text(formData, "sourcePublisher"),
+      authorityType: text(formData, "authorityType") as "university" | "government" | "accreditor" | "exam_body" | "other_official",
+      retrievedAt: text(formData, "sourceRetrievedAt"),
+    },
   });
   revalidatePath("/admin/catalog");
   redirect(`/admin/catalog/institutions/${institution.id}`);

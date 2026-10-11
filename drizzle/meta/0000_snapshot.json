@@ -15,13 +15,13 @@
         "disconnect_reason": { "name": "disconnect_reason", "type": "text", "primaryKey": false, "notNull": false },
         "post_call_analysis": { "name": "post_call_analysis", "type": "jsonb", "primaryKey": false, "notNull": false },
         "transcriptions": { "name": "transcriptions", "type": "jsonb", "primaryKey": false, "notNull": false },
-        "processing_status": { "name": "processing_status", "type": "processing_status", "primaryKey": false, "notNull": true, "default": "'received'" },
+        "processing_status": { "name": "processing_status", "type": "processing_status", "typeSchema": "public", "primaryKey": false, "notNull": true, "default": "'received'" },
         "processing_error": { "name": "processing_error", "type": "text", "primaryKey": false, "notNull": false },
-        "association_status": { "name": "association_status", "type": "association_status", "primaryKey": false, "notNull": true, "default": "'unassociated'" },
+        "association_status": { "name": "association_status", "type": "association_status", "typeSchema": "public", "primaryKey": false, "notNull": true, "default": "'unassociated'" },
         "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
         "updated_at": { "name": "updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
       },
-      "indexes": {}, "foreignKeys": {}, "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": [], "checkConstraints": [], "rls": false
+      "indexes": {}, "foreignKeys": {}, "compositePrimaryKeys": {}, "uniqueConstraints": { "consultations_agni_session_id_unique": { "name": "consultations_agni_session_id_unique", "nullsNotDistinct": false, "columns": ["agni_session_id"] } }, "policies": {}, "checkConstraints": {}, "isRLSEnabled": false
     },
     "public.consultation_extractions": {
       "name": "consultation_extractions", "schema": "public",
@@ -32,12 +32,12 @@
         "field_type": { "name": "field_type", "type": "text", "primaryKey": false, "notNull": true },
         "original_value": { "name": "original_value", "type": "jsonb", "primaryKey": false, "notNull": false },
         "normalized_value": { "name": "normalized_value", "type": "jsonb", "primaryKey": false, "notNull": false },
-        "state": { "name": "state", "type": "extraction_state", "primaryKey": false, "notNull": true },
+        "state": { "name": "state", "type": "extraction_state", "typeSchema": "public", "primaryKey": false, "notNull": true },
         "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
       },
-      "indexes": { "consultation_extractions_consultation_field_idx": { "name": "consultation_extractions_consultation_field_idx", "columns": ["consultation_id", "field_name"], "isUnique": true, "concurrently": false, "method": "btree", "with": {}, "where": null } },
+      "indexes": { "consultation_extractions_consultation_field_idx": { "name": "consultation_extractions_consultation_field_idx", "columns": [{ "expression": "consultation_id", "isExpression": false, "asc": true, "nulls": "last" }, { "expression": "field_name", "isExpression": false, "asc": true, "nulls": "last" }], "isUnique": true, "concurrently": false, "method": "btree", "with": {} } },
       "foreignKeys": { "consultation_extractions_consultation_id_consultations_id_fk": { "name": "consultation_extractions_consultation_id_consultations_id_fk", "tableFrom": "consultation_extractions", "tableTo": "consultations", "columnsFrom": ["consultation_id"], "columnsTo": ["id"], "onDelete": "cascade", "onUpdate": "no action" } },
-      "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": [], "checkConstraints": [], "rls": false
+      "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": {}, "checkConstraints": {}, "isRLSEnabled": false
     }
   },
   "enums": {

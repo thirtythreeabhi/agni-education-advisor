@@ -208,3 +208,7 @@ export type FamilyEducationFinance = typeof familyEducationFinances.$inferSelect
 export type StudentConsultation = typeof studentConsultations.$inferSelect;
 export type FamilyAuditEvent = typeof familyAuditEvents.$inferSelect;
 export type ConsultationProfileProposal = typeof consultationProfileProposals.$inferSelect;
+
+// Catalog tables remain authored in the isolated module, but this canonical
+// re-export makes them part of the shared Drizzle schema after integration.
+export * from "../modules/catalog/schema";

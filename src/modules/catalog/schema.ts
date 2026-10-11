@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { boolean, check, date, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 /**
  * This module is intentionally not imported by src/db/schema.ts yet. It can be
@@ -154,6 +154,9 @@ export const catalogAcademicRequirements = pgTable(
     description: text("description").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
+  (table) => ({
+    requirementUnique: uniqueIndex("catalog_academic_requirements_revision_type_description_idx").on(table.revisionId, table.requirementType, table.description),
+  }),
 );
 
 export const catalogProgramFees = pgTable(
@@ -166,14 +169,55 @@ export const catalogProgramFees = pgTable(
     currency: text("currency").notNull(),
     isRequired: boolean("is_required").notNull().default(true),
     description: text("description"),
+    feeKey: text("fee_key").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    feeUnique: uniqueIndex("catalog_program_fees_revision_type_description_idx").on(table.revisionId, table.feeType, table.description),
+    feeUnique: uniqueIndex("catalog_program_fees_revision_fee_key_idx").on(table.revisionId, table.feeKey),
     amountNonNegative: check("catalog_program_fees_amount_non_negative_check", sql`${table.amount} >= 0`),
     currencyFormat: check("catalog_program_fees_currency_check", sql`${table.currency} ~ '^[A-Z]{3}$'`),
   }),
 );
+
+export const catalogInstitutionsRelations = relations(catalogInstitutions, ({ many }) => ({
+  programs: many(catalogPrograms),
+  sources: many(catalogInstitutionSources),
+}));
+
+export const catalogEvidenceSourcesRelations = relations(catalogEvidenceSources, ({ many }) => ({
+  institutions: many(catalogInstitutionSources),
+  revisions: many(catalogProgramRevisions),
+}));
+
+export const catalogInstitutionSourcesRelations = relations(catalogInstitutionSources, ({ one }) => ({
+  institution: one(catalogInstitutions, { fields: [catalogInstitutionSources.institutionId], references: [catalogInstitutions.id] }),
+  source: one(catalogEvidenceSources, { fields: [catalogInstitutionSources.sourceId], references: [catalogEvidenceSources.id] }),
+}));
+
+export const catalogProgramsRelations = relations(catalogPrograms, ({ one, many }) => ({
+  institution: one(catalogInstitutions, { fields: [catalogPrograms.institutionId], references: [catalogInstitutions.id] }),
+  revisions: many(catalogProgramRevisions),
+}));
+
+export const catalogProgramRevisionsRelations = relations(catalogProgramRevisions, ({ one, many }) => ({
+  program: one(catalogPrograms, { fields: [catalogProgramRevisions.programId], references: [catalogPrograms.id] }),
+  source: one(catalogEvidenceSources, { fields: [catalogProgramRevisions.sourceId], references: [catalogEvidenceSources.id] }),
+  intakes: many(catalogProgramIntakes),
+  requirements: many(catalogAcademicRequirements),
+  fees: many(catalogProgramFees),
+}));
+
+export const catalogProgramIntakesRelations = relations(catalogProgramIntakes, ({ one }) => ({
+  revision: one(catalogProgramRevisions, { fields: [catalogProgramIntakes.revisionId], references: [catalogProgramRevisions.id] }),
+}));
+
+export const catalogAcademicRequirementsRelations = relations(catalogAcademicRequirements, ({ one }) => ({
+  revision: one(catalogProgramRevisions, { fields: [catalogAcademicRequirements.revisionId], references: [catalogProgramRevisions.id] }),
+}));
+
+export const catalogProgramFeesRelations = relations(catalogProgramFees, ({ one }) => ({
+  revision: one(catalogProgramRevisions, { fields: [catalogProgramFees.revisionId], references: [catalogProgramRevisions.id] }),
+}));
 
 const stableKeySchema = z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{1,99}$/, "must be a stable lowercase key");
 export const academicYearSchema = z.string().regex(/^(\d{4})-(\d{4})$/).refine((value) => {

@@ -1,8 +1,8 @@
 # Agni Education Advisor
 
-The current vertical slice authenticates, validates, deduplicates, normalizes, and persists Agni `call_completed` webhooks, then provides protected admin review and family/student profile workflows.
+The application authenticates, validates, deduplicates, normalizes, and persists Agni `call_completed` webhooks; provides protected consultation and owner-scoped family/student workflows; and provides an admin-only, source-backed university catalog and import/review workflow.
 
-No university catalog, recommendations, payments, reports, or fabricated records are included.
+The catalog never invents institutions or programs. Imported data remains unverified and is not recommendation-ready until it passes the explicit readiness check.
 
 ## Local setup
 
@@ -17,6 +17,8 @@ cp .env.example .env.local
 npm run db:migrate
 npm run dev
 ```
+
+The catalog importer is available at `/admin/catalog/import`. Its JSON v1 contract and integration notes are documented in [`src/modules/catalog/import-format.md`](src/modules/catalog/import-format.md) and [`src/modules/catalog/README.md`](src/modules/catalog/README.md).
 
 The migration entrypoint intentionally uses an `async function main()` instead of top-level `await`, so it remains compatible with the repository's CommonJS-oriented `tsx` execution path. The local PostgreSQL 18 cluster is expected on port 5432. Create the local role and database once, using an administrative shell:
 
@@ -71,10 +73,13 @@ The minimal schema contains:
 - `student_consultations`: the audited, one-to-one consultation-to-student association.
 - `consultation_profile_proposals`: admin-reviewable extracted profile changes; proposal acceptance is the only path that changes existing student fields.
 - `family_audit_events`: profile, association, proposal, and resolution audit records.
+- `catalog_institutions`, `catalog_programs`, and source-backed program revisions with intake, requirement, international tuition, mandatory fee, verification, and historical effective-date data.
 
 Financial numeric zero is stored as `review` unless the source value explicitly communicates zero. Missing values remain `missing`.
 
 Family and student records may contain sensitive information about minors, including names, schools, academic history, goals, and financial context. Ordinary users are restricted to families they own; consultation association and proposal resolution are administrator-only. Do not place this data in logs, client-exposed environment variables, or unapproved exports. Financial fields extracted from calls remain review data and are not automatically copied into family finances.
+
+Catalog records retain official evidence URL, publisher/authority, retrieval timestamp, academic year, verification status, and revision-specific facts. Missing deadlines, fees, or requirements are displayed as unconfirmed; stale or incomplete revisions are rejected by readiness checks.
 
 ## Account limitations
 

@@ -43,6 +43,13 @@
       "when": 1791676803000,
       "tag": "0005_retain_family_audit_history",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791676804000,
+      "tag": "0006_catalog",
+      "breakpoints": true
     }
   ]
 }
