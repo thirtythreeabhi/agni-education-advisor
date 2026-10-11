@@ -1,5 +1,20 @@
-node_modules
-.next
+# Dependencies and framework output
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# Local environment and credentials (keep only the documented template)
 .env
-.env.local
+.env.*
+!.env.example
+*.pem
+*.key
+credentials/
+secrets/
+
+# Generated TypeScript/build/tooling state
+*.tsbuildinfo
+.eslintcache
 *.log
