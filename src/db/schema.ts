@@ -14,7 +14,11 @@ export const familyAuditEventType = pgEnum("family_audit_event_type", [
   "education_finances_updated",
   "consultation_associated",
   "consultation_disassociated",
+  "consultation_profile_proposed",
+  "consultation_profile_accepted",
+  "consultation_profile_rejected",
 ]);
+export const proposalState = pgEnum("proposal_state", ["pending", "conflict", "accepted", "rejected", "unmapped"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -138,6 +142,24 @@ export const familyAuditEvents = pgTable("family_audit_events", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const consultationProfileProposals = pgTable("consultation_profile_proposals", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  consultationId: uuid("consultation_id").notNull().references(() => consultations.id, { onDelete: "cascade" }),
+  studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+  extractionId: uuid("extraction_id").references(() => consultationExtractions.id, { onDelete: "set null" }),
+  fieldName: text("field_name").notNull(),
+  studentFieldName: text("student_field_name"),
+  proposedValue: jsonb("proposed_value"),
+  existingValue: jsonb("existing_value"),
+  state: proposalState("state").notNull().default("pending"),
+  resolvedByUserId: uuid("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  consultationStudentFieldUnique: uniqueIndex("consultation_profile_proposals_consultation_student_field_idx").on(table.consultationId, table.studentId, table.fieldName),
+}));
+
 export const familiesRelations = relations(families, ({ one, many }) => ({
   owner: one(users, { fields: [families.ownerUserId], references: [users.id] }),
   students: many(students),
@@ -168,6 +190,13 @@ export const familyAuditEventsRelations = relations(familyAuditEvents, ({ one })
   consultation: one(consultations, { fields: [familyAuditEvents.consultationId], references: [consultations.id] }),
 }));
 
+export const consultationProfileProposalsRelations = relations(consultationProfileProposals, ({ one }) => ({
+  consultation: one(consultations, { fields: [consultationProfileProposals.consultationId], references: [consultations.id] }),
+  student: one(students, { fields: [consultationProfileProposals.studentId], references: [students.id] }),
+  extraction: one(consultationExtractions, { fields: [consultationProfileProposals.extractionId], references: [consultationExtractions.id] }),
+  resolvedBy: one(users, { fields: [consultationProfileProposals.resolvedByUserId], references: [users.id] }),
+}));
+
 export const schemaDefaults = sql`now()`;
 
 export type Consultation = typeof consultations.$inferSelect;
@@ -177,3 +206,4 @@ export type Student = typeof students.$inferSelect;
 export type FamilyEducationFinance = typeof familyEducationFinances.$inferSelect;
 export type StudentConsultation = typeof studentConsultations.$inferSelect;
 export type FamilyAuditEvent = typeof familyAuditEvents.$inferSelect;
+export type ConsultationProfileProposal = typeof consultationProfileProposals.$inferSelect;

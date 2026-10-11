@@ -19,7 +19,7 @@ describeDatabase("family domain CRUD and authorization", () => {
     process.env.DATABASE_URL = databaseUrl;
     const db = getDb();
     await db.insert(users).values([
-      { id: ownerUserId, email: `${ownerUserId}@example.com`, passwordHash: "test-hash" },
+      { id: ownerUserId, email: `${ownerUserId}@example.com`, passwordHash: "test-hash", role: "admin" },
       { id: otherUserId, email: `${otherUserId}@example.com`, passwordHash: "test-hash" },
     ]);
     await db.insert(consultations).values({ id: consultationId, agniSessionId: `family-test-${consultationId}` });

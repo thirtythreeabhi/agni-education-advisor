@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { consultations, familyAuditEvents, families, familyEducationFinances, studentConsultations, students } from "@/db/schema";
+import { consultations, familyAuditEvents, families, familyEducationFinances, studentConsultations, students, users } from "@/db/schema";
 import { auditChanges } from "./audit";
 import { createFamilyInputSchema, educationFinancesInputSchema, studentInputSchema, consultationAssociationInputSchema, type EducationFinancesInput, type StudentInput } from "./validation";
 
@@ -52,6 +52,8 @@ export async function updateEducationFinances(ownerUserId: string, familyId: str
 export async function associateConsultation(ownerUserId: string, familyId: string, input: unknown) {
   const values = consultationAssociationInputSchema.parse(input);
   return getDb().transaction(async (tx) => {
+    const [actor] = await tx.select({ role: users.role, isActive: users.isActive }).from(users).where(eq(users.id, ownerUserId)).limit(1);
+    if (!actor || !actor.isActive || actor.role !== "admin") throw new Error("ADMIN_REQUIRED");
     const [student] = await tx.select({ id: students.id, familyId: students.familyId }).from(students).innerJoin(families, eq(students.familyId, families.id)).where(and(eq(students.id, values.studentId), eq(families.id, familyId), eq(families.ownerUserId, ownerUserId))).limit(1);
     if (!student) throw new Error("STUDENT_NOT_FOUND");
     const [association] = await tx.insert(studentConsultations).values({ ...values, associatedByUserId: ownerUserId }).returning();
@@ -64,6 +66,8 @@ export async function associateConsultation(ownerUserId: string, familyId: strin
 export async function disassociateConsultation(ownerUserId: string, familyId: string, input: unknown) {
   const values = consultationAssociationInputSchema.parse(input);
   return getDb().transaction(async (tx) => {
+    const [actor] = await tx.select({ role: users.role, isActive: users.isActive }).from(users).where(eq(users.id, ownerUserId)).limit(1);
+    if (!actor || !actor.isActive || actor.role !== "admin") throw new Error("ADMIN_REQUIRED");
     const [student] = await tx.select({ id: students.id }).from(students).innerJoin(families, eq(students.familyId, families.id)).where(and(eq(students.id, values.studentId), eq(families.id, familyId), eq(families.ownerUserId, ownerUserId))).limit(1);
     if (!student) throw new Error("STUDENT_NOT_FOUND");
     const deleted = await tx.delete(studentConsultations).where(and(eq(studentConsultations.studentId, values.studentId), eq(studentConsultations.consultationId, values.consultationId))).returning({ studentId: studentConsultations.studentId });
