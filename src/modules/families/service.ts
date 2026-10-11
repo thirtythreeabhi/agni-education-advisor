@@ -24,6 +24,17 @@ export async function addStudent(ownerUserId: string, familyId: string, input: S
   });
 }
 
+export async function updateStudent(ownerUserId: string, familyId: string, studentId: string, input: StudentInput | unknown) {
+  const values = studentInputSchema.parse(input);
+  return getDb().transaction(async (tx) => {
+    const [existing] = await tx.select({ student: students }).from(students).innerJoin(families, eq(students.familyId, families.id)).where(and(eq(students.id, studentId), eq(students.familyId, familyId), eq(families.ownerUserId, ownerUserId))).limit(1);
+    if (!existing) throw new Error("STUDENT_NOT_FOUND");
+    const [student] = await tx.update(students).set({ ...values, updatedAt: new Date() }).where(eq(students.id, studentId)).returning();
+    await tx.insert(familyAuditEvents).values({ familyId, studentId, actorUserId: ownerUserId, eventType: "student_updated", changes: auditChanges(existing.student as Record<string, unknown>, values) });
+    return student;
+  });
+}
+
 export async function updateEducationFinances(ownerUserId: string, familyId: string, input: EducationFinancesInput | unknown) {
   const values = educationFinancesInputSchema.parse(input);
   return getDb().transaction(async (tx) => {
