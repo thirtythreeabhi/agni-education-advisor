@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const optionalText = z.string().trim().min(1).optional();
+const optionalText = z.string().trim().min(1).max(2000).optional();
 
 export const createFamilyInputSchema = z.object({
   name: z.string().trim().min(1).max(160),
@@ -16,7 +16,7 @@ export const studentInputSchema = z.object({
   academicSummary: optionalText,
   desiredDegree: optionalText,
   careerGoals: optionalText,
-  preferredCountries: z.array(z.string().trim().min(2).max(100)).max(30).default([]),
+  preferredCountries: z.array(z.string().trim().min(2).max(100)).max(30).default([]).transform((countries) => [...new Set(countries)]),
   preferredIntake: optionalText,
 });
 

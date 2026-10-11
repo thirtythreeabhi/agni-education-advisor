@@ -1,6 +1,6 @@
 # Agni Education Advisor
 
-Phase 1 implements the first vertical slice only: an Agni `call_completed` webhook is authenticated, validated, deduplicated, normalized, persisted to Neon, and reviewed through a protected first-party credentials account.
+The current vertical slice authenticates, validates, deduplicates, normalizes, and persists Agni `call_completed` webhooks, then provides protected admin review and family/student profile workflows.
 
 No university catalog, recommendations, payments, reports, or fabricated records are included.
 
@@ -53,7 +53,7 @@ Send a `POST` request to `/api/webhooks/agni` with the configured header name an
 
 The handler returns `401` for invalid authentication, `400` for invalid JSON/schema, `200` for successful or duplicate-safe processing, and `500` for processing failures so a provider retry can occur.
 
-The current implementation has no automatic student/family association. Every ingested consultation starts as `unassociated` and is only visible to configured administrators. An explicit, audited association action is a later phase.
+Every ingested consultation starts as `unassociated` and is only visible to configured administrators. An administrator can search existing students and explicitly associate a consultation. The association is audited, one consultation can belong to only one student, and extracted profile fields become proposals rather than silent updates. Existing student values remain unchanged until an administrator explicitly accepts a proposal; conflicts can be rejected or explicitly resolved.
 
 Recording URLs and tokenized recording references are removed before persistence. Transcript retention is intentionally unresolved; transcripts are retained only for this phase and are admin-protected until a retention decision is approved.
 
@@ -67,8 +67,14 @@ The minimal schema contains:
 
 - `consultations`: one row per unique Agni call session, including processing and association state.
 - `consultation_extractions`: normalized extracted fields with original values and states (`confirmed`, `missing`, or `review`).
+- `families`, `students`, and `family_education_finances`: owner-scoped family profiles, student planning data, and finance fields with explicit `confirmed`, `unknown`, or `review` states.
+- `student_consultations`: the audited, one-to-one consultation-to-student association.
+- `consultation_profile_proposals`: admin-reviewable extracted profile changes; proposal acceptance is the only path that changes existing student fields.
+- `family_audit_events`: profile, association, proposal, and resolution audit records.
 
 Financial numeric zero is stored as `review` unless the source value explicitly communicates zero. Missing values remain `missing`.
+
+Family and student records may contain sensitive information about minors, including names, schools, academic history, goals, and financial context. Ordinary users are restricted to families they own; consultation association and proposal resolution are administrator-only. Do not place this data in logs, client-exposed environment variables, or unapproved exports. Financial fields extracted from calls remain review data and are not automatically copied into family finances.
 
 ## Account limitations
 

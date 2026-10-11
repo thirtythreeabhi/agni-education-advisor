@@ -129,11 +129,12 @@ export const studentConsultations = pgTable("student_consultations", {
   associatedAt: timestamp("associated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   studentConsultationPrimaryKey: uniqueIndex("student_consultations_student_consultation_idx").on(table.studentId, table.consultationId),
+  consultationUnique: uniqueIndex("student_consultations_consultation_unique_idx").on(table.consultationId),
 }));
 
 export const familyAuditEvents = pgTable("family_audit_events", {
   id: uuid("id").defaultRandom().primaryKey(),
-  familyId: uuid("family_id").notNull().references(() => families.id, { onDelete: "cascade" }),
+  familyId: uuid("family_id").notNull().references(() => families.id, { onDelete: "restrict" }),
   actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
   studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
   consultationId: uuid("consultation_id").references(() => consultations.id, { onDelete: "set null" }),

@@ -29,6 +29,20 @@
       "when": 1791676801000,
       "tag": "0003_consultation_profile_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791676802000,
+      "tag": "0004_enforce_single_consultation_association",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791676803000,
+      "tag": "0005_retain_family_audit_history",
+      "breakpoints": true
     }
   ]
 }

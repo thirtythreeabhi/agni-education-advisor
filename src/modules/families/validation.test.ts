@@ -20,4 +20,9 @@ describe("family domain validation", () => {
     expect(() => studentInputSchema.parse({ firstName: "", preferredCountries: ["x"] })).toThrow();
     expect(studentInputSchema.parse({ firstName: "Asha", desiredDegree: "Computer Science", preferredCountries: ["Canada", "India"] })).toMatchObject({ desiredDegree: "Computer Science" });
   });
+
+  it("bounds free text and removes duplicate country preferences", () => {
+    expect(() => studentInputSchema.parse({ firstName: "Asha", careerGoals: "x".repeat(2001) })).toThrow();
+    expect(studentInputSchema.parse({ firstName: "Asha", preferredCountries: ["Canada", "Canada"] }).preferredCountries).toEqual(["Canada"]);
+  });
 });
