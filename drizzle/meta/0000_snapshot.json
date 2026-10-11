@@ -1,0 +1,54 @@
+{
+  "id": "phase1-consultations",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.consultations": {
+      "name": "consultations", "schema": "public",
+      "columns": {
+        "id": { "name": "id", "type": "uuid", "primaryKey": true, "notNull": true, "default": "gen_random_uuid()" },
+        "agni_session_id": { "name": "agni_session_id", "type": "text", "primaryKey": false, "notNull": true },
+        "agent_id": { "name": "agent_id", "type": "text", "primaryKey": false, "notNull": false },
+        "agni_status": { "name": "agni_status", "type": "text", "primaryKey": false, "notNull": false },
+        "duration_sec": { "name": "duration_sec", "type": "integer", "primaryKey": false, "notNull": false },
+        "disconnect_reason": { "name": "disconnect_reason", "type": "text", "primaryKey": false, "notNull": false },
+        "post_call_analysis": { "name": "post_call_analysis", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "transcriptions": { "name": "transcriptions", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "processing_status": { "name": "processing_status", "type": "processing_status", "primaryKey": false, "notNull": true, "default": "'received'" },
+        "processing_error": { "name": "processing_error", "type": "text", "primaryKey": false, "notNull": false },
+        "association_status": { "name": "association_status", "type": "association_status", "primaryKey": false, "notNull": true, "default": "'unassociated'" },
+        "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" },
+        "updated_at": { "name": "updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
+      },
+      "indexes": {}, "foreignKeys": {}, "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": [], "checkConstraints": [], "rls": false
+    },
+    "public.consultation_extractions": {
+      "name": "consultation_extractions", "schema": "public",
+      "columns": {
+        "id": { "name": "id", "type": "uuid", "primaryKey": true, "notNull": true, "default": "gen_random_uuid()" },
+        "consultation_id": { "name": "consultation_id", "type": "uuid", "primaryKey": false, "notNull": true },
+        "field_name": { "name": "field_name", "type": "text", "primaryKey": false, "notNull": true },
+        "field_type": { "name": "field_type", "type": "text", "primaryKey": false, "notNull": true },
+        "original_value": { "name": "original_value", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "normalized_value": { "name": "normalized_value", "type": "jsonb", "primaryKey": false, "notNull": false },
+        "state": { "name": "state", "type": "extraction_state", "primaryKey": false, "notNull": true },
+        "created_at": { "name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true, "default": "now()" }
+      },
+      "indexes": { "consultation_extractions_consultation_field_idx": { "name": "consultation_extractions_consultation_field_idx", "columns": ["consultation_id", "field_name"], "isUnique": true, "concurrently": false, "method": "btree", "with": {}, "where": null } },
+      "foreignKeys": { "consultation_extractions_consultation_id_consultations_id_fk": { "name": "consultation_extractions_consultation_id_consultations_id_fk", "tableFrom": "consultation_extractions", "tableTo": "consultations", "columnsFrom": ["consultation_id"], "columnsTo": ["id"], "onDelete": "cascade", "onUpdate": "no action" } },
+      "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": [], "checkConstraints": [], "rls": false
+    }
+  },
+  "enums": {
+    "public.processing_status": { "name": "processing_status", "schema": "public", "values": ["received", "processing", "processed", "failed"] },
+    "public.association_status": { "name": "association_status", "schema": "public", "values": ["unassociated", "associated"] },
+    "public.extraction_state": { "name": "extraction_state", "schema": "public", "values": ["confirmed", "missing", "review"] }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": { "columns": {}, "schemas": {}, "tables": {} }
+}

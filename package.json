@@ -1,0 +1,46 @@
+{
+  "name": "agni-education-advisor",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "NEXT_TEST_WASM=1 next dev",
+    "build": "NEXT_TEST_WASM=1 next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "auth:bootstrap-admin": "tsx scripts/bootstrap-admin.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "@tailwindcss/postcss": "^4.1.13",
+    "argon2": "^0.41.1",
+    "dotenv": "^17.2.2",
+    "drizzle-orm": "^0.44.5",
+    "libphonenumber-js": "^1.11.20",
+    "next": "^15.5.4",
+    "next-auth": "^5.0.0-beta.29",
+    "pg": "^8.16.3",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@next/swc-wasm-nodejs": "^15.5.27",
+    "@types/node": "^24.5.2",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.4",
+    "drizzle-kit": "^0.31.4",
+    "eslint": "^9.37.0",
+    "eslint-config-next": "^15.5.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.2",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4"
+  }
+}
