@@ -1,4 +1,5 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { asc, desc, eq, inArray, and } from "drizzle-orm";
+import { z } from "zod";
 import { getDb } from "@/db/client";
 import {
   academicRequirementInputSchema,
@@ -17,9 +18,14 @@ import {
   catalogProgramRevisions,
   catalogPrograms,
 } from "./schema";
+import { canTransitionVerification, type CatalogVerificationStatus } from "./verification";
 
 function dateOnly(value: Date | null | undefined) {
   return value ? value.toISOString().slice(0, 10) : value ?? null;
+}
+
+function feeKey(feeType: "international_tuition" | "mandatory", description: string | null | undefined) {
+  return `${feeType}:${description ?? "default"}`;
 }
 
 export async function listInstitutions() {
@@ -120,6 +126,20 @@ export async function createInstitution(input: unknown) {
   });
 }
 
+export async function createInstitutionWithSource(input: unknown) {
+  const parsed = z.object({ institution: institutionInputSchema.omit({ sourceId: true }), source: evidenceSourceInputSchema }).parse(input);
+  const institution = parsed.institution;
+  const source = parsed.source;
+  return getDb().transaction(async (tx) => {
+    let [existingSource] = await tx.select().from(catalogEvidenceSources).where(and(eq(catalogEvidenceSources.url, source.url), eq(catalogEvidenceSources.retrievedAt, source.retrievedAt))).limit(1);
+    if (existingSource && (existingSource.publisher !== source.publisher || existingSource.authorityType !== source.authorityType)) throw new Error("source metadata conflicts with an existing source");
+    if (!existingSource) [existingSource] = await tx.insert(catalogEvidenceSources).values(source).returning();
+    const [createdInstitution] = await tx.insert(catalogInstitutions).values({ stableKey: institution.stableKey, officialName: institution.officialName, countryCode: institution.countryCode }).returning();
+    await tx.insert(catalogInstitutionSources).values({ institutionId: createdInstitution.id, sourceId: existingSource.id });
+    return createdInstitution;
+  });
+}
+
 export async function createProgram(input: unknown) {
   const parsed = programInputSchema.parse(input);
   const [program] = await getDb().insert(catalogPrograms).values(parsed).returning();
@@ -160,12 +180,15 @@ export async function createAcademicRequirement(input: unknown) {
 
 export async function createProgramFee(input: unknown) {
   const parsed = programFeeInputSchema.parse(input);
-  const [fee] = await getDb().insert(catalogProgramFees).values({ ...parsed, amount: String(parsed.amount) }).returning();
+  const [fee] = await getDb().insert(catalogProgramFees).values({ ...parsed, amount: String(parsed.amount), feeKey: feeKey(parsed.feeType, parsed.description) }).returning();
   return fee;
 }
 
-export async function updateRevisionVerification(id: string, verificationStatus: "unverified" | "in_review" | "verified" | "conflicting" | "stale") {
-  const [revision] = await getDb().update(catalogProgramRevisions).set({ verificationStatus, verifiedAt: verificationStatus === "verified" ? new Date() : null }).where(eq(catalogProgramRevisions.id, id)).returning();
+export async function updateRevisionVerification(id: string, verificationStatus: CatalogVerificationStatus) {
+  const [current] = await getDb().select({ verificationStatus: catalogProgramRevisions.verificationStatus, verifiedAt: catalogProgramRevisions.verifiedAt }).from(catalogProgramRevisions).where(eq(catalogProgramRevisions.id, id)).limit(1);
+  if (!current) throw new Error("revision not found");
+  if (!canTransitionVerification(current.verificationStatus, verificationStatus)) throw new Error("invalid verification transition");
+  const [revision] = await getDb().update(catalogProgramRevisions).set({ verificationStatus, verifiedAt: verificationStatus === "verified" ? new Date() : current.verifiedAt }).where(eq(catalogProgramRevisions.id, id)).returning();
   return revision;
 }
 

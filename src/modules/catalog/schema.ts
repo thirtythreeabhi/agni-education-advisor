@@ -154,6 +154,9 @@ export const catalogAcademicRequirements = pgTable(
     description: text("description").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
+  (table) => ({
+    requirementUnique: uniqueIndex("catalog_academic_requirements_revision_type_description_idx").on(table.revisionId, table.requirementType, table.description),
+  }),
 );
 
 export const catalogProgramFees = pgTable(
@@ -166,10 +169,11 @@ export const catalogProgramFees = pgTable(
     currency: text("currency").notNull(),
     isRequired: boolean("is_required").notNull().default(true),
     description: text("description"),
+    feeKey: text("fee_key").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    feeUnique: uniqueIndex("catalog_program_fees_revision_type_description_idx").on(table.revisionId, table.feeType, table.description),
+    feeUnique: uniqueIndex("catalog_program_fees_revision_fee_key_idx").on(table.revisionId, table.feeKey),
     amountNonNegative: check("catalog_program_fees_amount_non_negative_check", sql`${table.amount} >= 0`),
     currencyFormat: check("catalog_program_fees_currency_check", sql`${table.currency} ~ '^[A-Z]{3}$'`),
   }),
