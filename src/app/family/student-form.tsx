@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { addStudentAction, updateStudentAction, type FormActionState } from "@/modules/families/actions";
 import { ActionError, SubmitButton } from "./form-submit";
 
-type StudentValues = { firstName: string; lastName: string | null; currentGrade: string | null; schoolName: string | null; academicSummary: string | null; desiredDegree: string | null; careerGoals: string | null; preferredCountries: string[]; preferredIntake: string | null };
+type StudentValues = { firstName: string; lastName: string | null; currentGrade: string | null; schoolName: string | null; academicSummary: string | null; desiredDegree: string | null; specialization: string | null; careerGoals: string | null; preferredCountries: string[]; preferredIntake: string | null };
 
 export function StudentForm({ familyId, studentId, initial }: { familyId: string; studentId?: string; initial?: StudentValues }) {
   const action = studentId ? updateStudentAction.bind(null, familyId, studentId) : addStudentAction.bind(null, familyId);
@@ -19,6 +19,7 @@ export function StudentForm({ familyId, studentId, initial }: { familyId: string
       <label>Current grade<input name="currentGrade" defaultValue={initial?.currentGrade ?? ""} /></label>
       <label>School or institution<input name="schoolName" defaultValue={initial?.schoolName ?? ""} /></label>
       <label>Desired degree<input name="desiredDegree" defaultValue={initial?.desiredDegree ?? ""} /></label>
+      <label>Specialization<input name="specialization" defaultValue={initial?.specialization ?? ""} /></label>
       <label>Preferred intake<input name="preferredIntake" defaultValue={initial?.preferredIntake ?? ""} placeholder="Fall 2027" /></label>
     </div>
     <label>Academic details<textarea name="academicSummary" defaultValue={initial?.academicSummary ?? ""} rows={4} /></label>

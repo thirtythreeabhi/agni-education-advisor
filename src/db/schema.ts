@@ -99,6 +99,7 @@ export const students = pgTable("students", {
   schoolName: text("school_name"),
   academicSummary: text("academic_summary"),
   desiredDegree: text("desired_degree"),
+  specialization: text("specialization"),
   careerGoals: text("career_goals"),
   preferredCountries: text("preferred_countries").array().notNull().default(sql`'{}'::text[]`),
   preferredIntake: text("preferred_intake"),
@@ -111,6 +112,12 @@ export const familyEducationFinances = pgTable("family_education_finances", {
   annualBudgetMinor: integer("annual_budget_minor"),
   annualBudgetCurrency: text("annual_budget_currency"),
   annualBudgetState: financeFieldState("annual_budget_state").notNull().default("unknown"),
+  educationSavingsInr: integer("education_savings_inr"),
+  educationSavingsState: financeFieldState("education_savings_state").notNull().default("unknown"),
+  proposedLoanInr: integer("proposed_loan_inr"),
+  proposedLoanState: financeFieldState("proposed_loan_state").notNull().default("unknown"),
+  annualHouseholdIncomeInr: integer("annual_household_income_inr"),
+  annualHouseholdIncomeState: financeFieldState("annual_household_income_state").notNull().default("unknown"),
   fundingSource: text("funding_source"),
   fundingSourceState: financeFieldState("funding_source_state").notNull().default("unknown"),
   financialAidNeeded: boolean("financial_aid_needed"),
@@ -120,6 +127,9 @@ export const familyEducationFinances = pgTable("family_education_finances", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   budgetNonNegative: check("family_education_finances_budget_non_negative", sql`${table.annualBudgetMinor} is null or ${table.annualBudgetMinor} >= 0`),
+  educationSavingsNonNegative: check("family_education_finances_savings_non_negative", sql`${table.educationSavingsInr} is null or ${table.educationSavingsInr} >= 0`),
+  proposedLoanNonNegative: check("family_education_finances_loan_non_negative", sql`${table.proposedLoanInr} is null or ${table.proposedLoanInr} >= 0`),
+  annualIncomeNonNegative: check("family_education_finances_income_non_negative", sql`${table.annualHouseholdIncomeInr} is null or ${table.annualHouseholdIncomeInr} >= 0`),
 }));
 
 export const studentConsultations = pgTable("student_consultations", {
@@ -150,6 +160,7 @@ export const consultationProfileProposals = pgTable("consultation_profile_propos
   extractionId: uuid("extraction_id").references(() => consultationExtractions.id, { onDelete: "set null" }),
   fieldName: text("field_name").notNull(),
   studentFieldName: text("student_field_name"),
+  familyFinanceFieldName: text("family_finance_field_name"),
   proposedValue: jsonb("proposed_value"),
   existingValue: jsonb("existing_value"),
   state: proposalState("state").notNull().default("pending"),

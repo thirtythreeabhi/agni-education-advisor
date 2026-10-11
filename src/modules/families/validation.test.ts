@@ -6,6 +6,9 @@ describe("family domain validation", () => {
     expect(studentInputSchema.parse({ firstName: "Asha" }).preferredCountries).toEqual([]);
     expect(educationFinancesInputSchema.parse({})).toMatchObject({
       annualBudgetState: "unknown",
+      educationSavingsState: "unknown",
+      proposedLoanState: "unknown",
+      annualHouseholdIncomeState: "unknown",
       fundingSourceState: "unknown",
       financialAidState: "unknown",
     });
@@ -14,6 +17,7 @@ describe("family domain validation", () => {
   it("rejects unsafe financial values and invalid currency", () => {
     expect(() => educationFinancesInputSchema.parse({ annualBudgetMinor: -1 })).toThrow();
     expect(() => educationFinancesInputSchema.parse({ annualBudgetCurrency: "US" })).toThrow();
+    expect(() => educationFinancesInputSchema.parse({ educationSavingsInr: -1 })).toThrow();
   });
 
   it("keeps student academic and planning fields bounded", () => {

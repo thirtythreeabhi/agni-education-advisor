@@ -1,4 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 
-export default async function Home() { redirect((await auth())?.user ? "/family" : "/login"); }
+export default async function Home() {
+  const user = (await auth())?.user;
+  if (!user) redirect("/login");
+  redirect(user.role === "admin" ? "/consultations" : "/family");
+}

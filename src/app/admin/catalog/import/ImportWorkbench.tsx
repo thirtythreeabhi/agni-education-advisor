@@ -14,18 +14,12 @@ export default function ImportWorkbench() {
 
   async function previewImport() {
     setBusy(true); setError(null); setResult(null);
-    const response = await fetch("/api/admin/catalog/import/preview", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ document }) });
-    const payload = await response.json();
-    if (!response.ok) setError(payload.error ?? "Preview failed"); else setPreview(payload);
-    setBusy(false);
+    try { const response = await fetch("/api/admin/catalog/import/preview", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ document }) }); const payload = await response.json(); if (!response.ok) setError(payload.error ?? "Preview failed"); else setPreview(payload); } catch { setError("Unable to reach the preview service. Try again."); } finally { setBusy(false); }
   }
 
   async function executeImport() {
     setBusy(true); setError(null);
-    const response = await fetch("/api/admin/catalog/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ document, dryRun: false }) });
-    const payload = await response.json();
-    if (!response.ok) setError(payload.error ?? "Import failed"); else setResult(payload);
-    setBusy(false);
+    try { const response = await fetch("/api/admin/catalog/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ document, dryRun: false }) }); const payload = await response.json(); if (!response.ok) setError(payload.error ?? "Import failed"); else setResult(payload); } catch { setError("Unable to reach the import service. Try again."); } finally { setBusy(false); }
   }
 
   return <div className="grid"><div className="card"><h2>JSON document</h2><p className="muted">Paste a version 1 document from <code>src/modules/catalog/import-format.md</code>. URLs are recorded as evidence; they are never fetched.</p><textarea value={document} onChange={(event) => { setDocument(event.target.value); setPreview(null); setResult(null); }} rows={20} style={{width: "100%", fontFamily: "monospace"}} placeholder='{"version":1,"records":[]}' /><div style={{display: "flex", gap: 8, marginTop: 12}}><button type="button" onClick={previewImport} disabled={busy || !document}>Preview / dry-run</button><button type="button" onClick={executeImport} disabled={busy || !preview || preview.errors.length > 0 || preview.validRecords.length === 0}>Import reviewed preview</button></div></div>

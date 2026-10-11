@@ -44,3 +44,10 @@
 - Before handoff, run `npm test`, `npm run typecheck`, and `npm run lint`; run `npm run build` when framework/configuration changes or when practical. Integration tests run only when `TEST_DATABASE_URL` is explicitly set.
 - Keep unit tests beside the relevant module. For database changes, test constraints, rollback behavior, authorization, and retry/idempotency paths.
 - Use two parallel worktrees for independent work: `feature/family-profiles` and `feature/university-catalog`. After integration, run database integration tests only with an explicitly isolated `TEST_DATABASE_URL`; do not apply migrations to deployed Neon automatically. Keep commits focused, do not deploy or push from setup work, and do not modify Neon or Vercel configuration without explicit authorization.
+
+## Product Completeness Standard
+
+- A shipped journey must be complete from the user’s entry point through the intended outcome: every redirect lands in an authorized, useful destination; every primary button/link performs its stated action; and success, validation, empty, loading, and failure states are represented.
+- Validate ordinary-user and admin journeys end to end, including ownership/authorization boundaries, persistence, refresh/back navigation, and the resulting user-visible data. A server service, route, or schema without a usable UI path is not a complete feature.
+- Keep domain semantics consistent across capture, storage, and presentation: preserve source units and currency, label minor/major units, show provenance and review state, and do not silently drop collected fields or invent missing facts.
+- Before handoff, trace the real journeys in the running app where possible and pair that check with targeted tests for the critical interactions. Record confirmed defects separately from assumptions or checks blocked by unavailable runtime data/services.

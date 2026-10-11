@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { consultations, families, familyEducationFinances, studentConsultations, students } from "@/db/schema";
+import { consultations, consultationExtractions, families, familyEducationFinances, studentConsultations, students } from "@/db/schema";
 
 type Database = ReturnType<typeof getDb>;
 
@@ -34,4 +34,12 @@ export async function getStudentForOwner(ownerUserId: string, familyId: string, 
   if (!student) return undefined;
   const history = await db.select({ consultation: consultations, associatedAt: studentConsultations.associatedAt }).from(studentConsultations).innerJoin(consultations, eq(studentConsultations.consultationId, consultations.id)).where(eq(studentConsultations.studentId, studentId)).orderBy(desc(studentConsultations.associatedAt));
   return { student: student.student, familyName: student.familyName, consultations: history };
+}
+
+export async function getConsultationForStudentOwner(ownerUserId: string, familyId: string, studentId: string, consultationId: string) {
+  const db = getDb();
+  const [row] = await db.select({ consultation: consultations, associatedAt: studentConsultations.associatedAt, familyName: families.name, studentName: students.firstName }).from(studentConsultations).innerJoin(consultations, eq(studentConsultations.consultationId, consultations.id)).innerJoin(students, eq(studentConsultations.studentId, students.id)).innerJoin(families, eq(students.familyId, families.id)).where(and(eq(studentConsultations.consultationId, consultationId), eq(studentConsultations.studentId, studentId), eq(students.familyId, familyId), eq(families.ownerUserId, ownerUserId))).limit(1);
+  if (!row) return undefined;
+  const extractions = await db.select({ fieldName: consultationExtractions.fieldName, normalizedValue: consultationExtractions.normalizedValue, state: consultationExtractions.state }).from(consultationExtractions).where(eq(consultationExtractions.consultationId, consultationId)).orderBy(consultationExtractions.fieldName);
+  return { ...row, extractions };
 }

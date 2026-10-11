@@ -50,6 +50,13 @@
       "when": 1791676804000,
       "tag": "0006_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791745479383,
+      "tag": "0007_futuristic_vampiro",
+      "breakpoints": true
     }
   ]
 }

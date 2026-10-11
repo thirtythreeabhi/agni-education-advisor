@@ -15,10 +15,10 @@ describe("family profile schema", () => {
 
   it("keeps finance state and student planning fields explicit", () => {
     expect(Object.keys(getTableColumns(familyEducationFinances))).toEqual(expect.arrayContaining([
-      "annualBudgetMinor", "annualBudgetState", "fundingSourceState", "financialAidState",
+      "annualBudgetMinor", "annualBudgetState", "educationSavingsInr", "educationSavingsState", "proposedLoanInr", "annualHouseholdIncomeInr", "fundingSourceState", "financialAidState",
     ]));
     expect(Object.keys(getTableColumns(students))).toEqual(expect.arrayContaining([
-      "academicSummary", "desiredDegree", "careerGoals", "preferredCountries", "preferredIntake",
+      "academicSummary", "desiredDegree", "specialization", "careerGoals", "preferredCountries", "preferredIntake",
     ]));
   });
 });
