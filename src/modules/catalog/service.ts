@@ -87,6 +87,7 @@ export async function getProgramDetail(id: string) {
       verificationStatus: catalogProgramRevisions.verificationStatus,
       retrievedAt: catalogProgramRevisions.retrievedAt,
       verifiedAt: catalogProgramRevisions.verifiedAt,
+      effectiveTo: catalogProgramRevisions.effectiveTo,
       sourceId: catalogEvidenceSources.id,
       sourceUrl: catalogEvidenceSources.url,
       sourcePublisher: catalogEvidenceSources.publisher,
