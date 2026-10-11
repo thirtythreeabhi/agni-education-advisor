@@ -13,6 +13,7 @@
 - Roles are `admin` and `user`. Public registration must never grant admin access. Use `requireAdmin()` or an equivalent server-side authorization check for privileged pages and mutations, and re-check account activity/session version for sensitive operations.
 - Keep `AUTH_SECRET`, database URLs, Agni secrets, bootstrap credentials, and password material out of source control and logs. Use constant-time comparison for shared secrets and validate all external input with Zod.
 - Preserve the recording/token scrubbing behavior before Agni data is persisted. Do not log webhook bodies, transcripts, recording URLs, access tokens, or database error details.
+- Family/student records can contain sensitive minor data and financial context. Enforce exact owner checks for ordinary users; consultation association and profile-proposal resolution are explicit admin actions. Do not add logs, exports, or client-side exposure for these records without an approved privacy/retention decision.
 
 ## Database conventions
 
@@ -26,6 +27,7 @@
 - The webhook endpoint is `POST /api/webhooks/agni`. It accepts the `call_completed` event, authenticates using the configured header and `AGNI_WEBHOOK_SECRET`, validates the payload, enforces a 1 MB limit, scrubs recording/token material, and persists transactionally.
 - Preserve duplicate-safe processing keyed by `call_session.id`. Return 401 for authentication failures, 400 for malformed/invalid payloads, 413 for oversized payloads, 200 for successful or already-processed deliveries, and 500 for retryable processing failures.
 - Treat the Agni payload as untrusted and expect schema evolution. Update `src/lib/agni-schema.ts`, unit tests, and migration/data-retention review together when the contract changes.
+- Association is separate from ingestion: webhook retries must preserve existing associations and proposals. Extracted profile values are proposals; never overwrite a student silently, and require explicit acceptance/rejection for conflicts. Financial extractions remain review data unless a separately approved mapping is added.
 
 ## Verified university data requirements
 

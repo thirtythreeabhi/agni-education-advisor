@@ -1,0 +1,99 @@
+import { asc, desc, eq, ilike, or } from "drizzle-orm";
+import { getDb } from "@/db/client";
+import { consultations, consultationExtractions, consultationProfileProposals, familyAuditEvents, families, students, studentConsultations, users } from "@/db/schema";
+import { buildProfileProposals, isProfileField } from "./association";
+import { consultationAssociationInputSchema } from "@/modules/families/validation";
+import { z } from "zod";
+
+const resolveProposalInputSchema = z.object({
+  proposalId: z.string().uuid(),
+  decision: z.enum(["accept", "reject"]),
+});
+
+type AdminTransaction = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
+async function assertAdmin(tx: AdminTransaction, actorUserId: string) {
+  const [actor] = await tx.select({ role: users.role, isActive: users.isActive }).from(users).where(eq(users.id, actorUserId)).limit(1);
+  if (!actor || !actor.isActive || actor.role !== "admin") throw new Error("ADMIN_REQUIRED");
+}
+
+function coerceStudentValue(fieldName: string, value: unknown) {
+  if (value === null || value === undefined) throw new Error("PROPOSAL_VALUE_MISSING");
+  if (fieldName === "preferredCountries") {
+    if (Array.isArray(value) && value.every((item) => typeof item === "string")) return value;
+    if (typeof value === "string") return value.split(",").map((item) => item.trim()).filter(Boolean);
+    throw new Error("PROPOSAL_VALUE_INVALID");
+  }
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  throw new Error("PROPOSAL_VALUE_INVALID");
+}
+
+export async function listStudentsForAdmin(search = "") {
+  const db = getDb();
+  const term = search.trim();
+  const where = term ? or(ilike(students.firstName, `%${term}%`), ilike(students.lastName, `%${term}%`), ilike(families.name, `%${term}%`)) : undefined;
+  return db.select({ id: students.id, firstName: students.firstName, lastName: students.lastName, familyId: families.id, familyName: families.name }).from(students).innerJoin(families, eq(students.familyId, families.id)).where(where).orderBy(asc(families.name), asc(students.firstName)).limit(100);
+}
+
+export async function getConsultationReview(consultationId: string) {
+  const db = getDb();
+  const [consultation] = await db.select().from(consultations).where(eq(consultations.id, consultationId)).limit(1);
+  if (!consultation) return undefined;
+  const [extractions, association, proposals] = await Promise.all([
+    db.select().from(consultationExtractions).where(eq(consultationExtractions.consultationId, consultationId)).orderBy(asc(consultationExtractions.fieldName)),
+    db.select({ student: students, family: families }).from(studentConsultations).innerJoin(students, eq(studentConsultations.studentId, students.id)).innerJoin(families, eq(students.familyId, families.id)).where(eq(studentConsultations.consultationId, consultationId)).limit(1),
+    db.select().from(consultationProfileProposals).where(eq(consultationProfileProposals.consultationId, consultationId)).orderBy(desc(consultationProfileProposals.createdAt)),
+  ]);
+  return { consultation, extractions, association: association[0], proposals };
+}
+
+export async function associateConsultationAsAdmin(actorUserId: string, input: unknown) {
+  const values = consultationAssociationInputSchema.parse(input);
+  return getDb().transaction(async (tx) => {
+    await assertAdmin(tx, actorUserId);
+    const [consultation] = await tx.select().from(consultations).where(eq(consultations.id, values.consultationId)).limit(1);
+    if (!consultation) throw new Error("CONSULTATION_NOT_FOUND");
+    const [student] = await tx.select({ student: students, familyId: families.id }).from(students).innerJoin(families, eq(students.familyId, families.id)).where(eq(students.id, values.studentId)).limit(1);
+    if (!student) throw new Error("STUDENT_NOT_FOUND");
+    const [existingAssociation] = await tx.select().from(studentConsultations).where(eq(studentConsultations.consultationId, values.consultationId)).limit(1);
+    if (existingAssociation) {
+      if (existingAssociation.studentId === values.studentId) return { duplicate: true, studentId: values.studentId };
+      throw new Error("CONSULTATION_ALREADY_ASSOCIATED");
+    }
+    const extractions = await tx.select().from(consultationExtractions).where(eq(consultationExtractions.consultationId, values.consultationId));
+    const proposals = buildProfileProposals(extractions, student.student);
+    await tx.insert(studentConsultations).values({ studentId: values.studentId, consultationId: values.consultationId, associatedByUserId: actorUserId });
+    await tx.update(consultations).set({ associationStatus: "associated", updatedAt: new Date() }).where(eq(consultations.id, values.consultationId));
+    if (proposals.length) await tx.insert(consultationProfileProposals).values(proposals.map((proposal) => ({ ...proposal, consultationId: values.consultationId, studentId: values.studentId })));
+    await tx.insert(familyAuditEvents).values([
+      { familyId: student.familyId, studentId: values.studentId, consultationId: values.consultationId, actorUserId, eventType: "consultation_associated", changes: { source: "admin_review" } },
+      { familyId: student.familyId, studentId: values.studentId, consultationId: values.consultationId, actorUserId, eventType: "consultation_profile_proposed", changes: { proposalCount: proposals.length } },
+    ]);
+    return { duplicate: false, studentId: values.studentId, proposalCount: proposals.length };
+  });
+}
+
+export async function resolveProfileProposal(actorUserId: string, input: unknown) {
+  const values = resolveProposalInputSchema.parse(input);
+  return getDb().transaction(async (tx) => {
+    await assertAdmin(tx, actorUserId);
+    const [row] = await tx.select({ proposal: consultationProfileProposals, familyId: families.id }).from(consultationProfileProposals).innerJoin(students, eq(consultationProfileProposals.studentId, students.id)).innerJoin(families, eq(students.familyId, families.id)).where(eq(consultationProfileProposals.id, values.proposalId)).limit(1);
+    if (!row) throw new Error("PROPOSAL_NOT_FOUND");
+    if (row.proposal.state === "accepted" || row.proposal.state === "rejected") return { idempotent: true, state: row.proposal.state };
+    if (values.decision === "reject") {
+      await tx.update(consultationProfileProposals).set({ state: "rejected", resolvedByUserId: actorUserId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(consultationProfileProposals.id, values.proposalId));
+      await tx.insert(familyAuditEvents).values({ familyId: row.familyId, studentId: row.proposal.studentId, consultationId: row.proposal.consultationId, actorUserId, eventType: "consultation_profile_rejected", changes: { proposalId: values.proposalId, fieldName: row.proposal.fieldName } });
+      return { idempotent: false, state: "rejected" as const };
+    }
+    if (!row.proposal.studentFieldName || !isProfileField(row.proposal.studentFieldName) || row.proposal.state === "unmapped") throw new Error("PROPOSAL_NOT_MAPPABLE");
+    const value = coerceStudentValue(row.proposal.studentFieldName, row.proposal.proposedValue);
+    const [student] = await tx.update(students).set({ [row.proposal.studentFieldName]: value, updatedAt: new Date() }).where(eq(students.id, row.proposal.studentId)).returning();
+    await tx.update(consultationProfileProposals).set({ state: "accepted", resolvedByUserId: actorUserId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(consultationProfileProposals.id, values.proposalId));
+    await tx.insert(familyAuditEvents).values([
+      { familyId: row.familyId, studentId: row.proposal.studentId, consultationId: row.proposal.consultationId, actorUserId, eventType: "consultation_profile_accepted", changes: { proposalId: values.proposalId, fieldName: row.proposal.studentFieldName, from: row.proposal.existingValue, to: value } },
+      { familyId: row.familyId, studentId: row.proposal.studentId, actorUserId, eventType: "student_updated", changes: { source: "consultation_profile_proposal", proposalId: values.proposalId } },
+    ]);
+    return { idempotent: false, state: "accepted" as const, student };
+  });
+}
