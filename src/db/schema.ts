@@ -1,6 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { catalogProgramRevisions } from "../modules/catalog/schema";
-import { boolean, check, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const processingStatus = pgEnum("processing_status", ["received", "processing", "processed", "failed"]);
 export const associationStatus = pgEnum("association_status", ["unassociated", "associated"]);
@@ -53,6 +53,18 @@ export const authRateLimits = pgTable("auth_rate_limits", {
   attempts: integer("attempts").notNull().default(0),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  tokenHashUnique: uniqueIndex("password_reset_tokens_hash_unique_idx").on(table.tokenHash),
+  userCreatedIndex: index("password_reset_tokens_user_created_idx").on(table.userId, table.createdAt),
+}));
 
 export const consultations = pgTable("consultations", {
   id: uuid("id").defaultRandom().primaryKey(),
