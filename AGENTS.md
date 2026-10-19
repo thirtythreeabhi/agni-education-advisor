@@ -58,5 +58,6 @@
 - Use Phosphor icons for new interface icons. Mark decorative icons hidden from assistive technology and label icon-only controls.
 - Prefer the established button variants (`button-primary`, `button-secondary`, `button-ghost`, `button-sidebar`, and `button-icon`) and the shared `.card`, `.status-*`, and form patterns. Add a shared component only when it removes repeated behavior or improves accessibility.
 - Keep the app-shell sidebar fixed and non-scrolling; keep vertical page scrolling in the main content region.
+- Use `.page-container` for full-width page content with shared gutters. Apply a narrower max-width only when the content benefits from a limited reading or form measure.
 - Preserve visible keyboard focus, WCAG AA text contrast, semantic status labels, responsive layouts, and native link/button behavior.
 - Keep server-first data access, authorization, privacy, and catalog provenance rules in this file intact during UI changes.

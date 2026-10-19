@@ -76,7 +76,7 @@ Use small `color-mix()` tints derived from these tokens for status backgrounds. 
 - Keep the existing Arial/Helvetica system stack; do not add a font dependency. Phase 1 formalizes it as the `font-sans` theme token.
 - Use `text-page-title` (30/36), `text-section-title` (20/28), `text-card-title` (16/24), `text-body` (14/20), and `text-supporting` (12/16). Pair each role with a consistent weight; existing pages adopt these utilities during later migrations.
 - Use Tailwind's existing 4px spacing rhythm. Prefer 8, 12, 16, 24, 32, and 40px for common UI gaps and page padding.
-- Establish one responsive page container rule for content width and gutters. Replace inline spacing/layout styles only as pages are migrated, not in a blanket cleanup.
+- Use `.page-container` as the default full-width page wrapper. It fills the available main-content width and applies consistent 24px side gutters; keep content-specific max-widths explicit only where reading or form width benefits from a narrower measure. `.shell` remains a compatibility alias for the full-width container.
 
 ### 3. Component variants
 
@@ -131,7 +131,7 @@ Use `.card-interactive` only on a genuinely interactive card, and provide the en
 - Preserve the existing app-shell model: viewport-sized outer frame, fixed-height non-scrolling sidebar, and one main vertical scroll region.
 - Use `min-h-0` on flex children that contain the main scroller. Do not add page-level scrolling or absolute-positioned footer controls.
 - Keep navigation reachable at short viewport heights through deliberate compaction; do not allow sidebar items to overlap or be clipped.
-- Use responsive grid breakpoints for content columns and a shared page container for gutters. Avoid inline styles for routine layout.
+- Use responsive grid breakpoints for content columns and `.page-container` for full-width page layout and gutters. Keep narrower content widths explicit where needed. Avoid inline styles for routine layout.
 
 ### 5. Icon and accessibility rules
 

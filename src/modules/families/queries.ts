@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { consultations, consultationExtractions, families, familyEducationFinances, studentConsultations, students } from "@/db/schema";
+import { consultations, consultationExtractions, families, familyEducationFinances, studentConsultations, students, users } from "@/db/schema";
 
 type Database = ReturnType<typeof getDb>;
 
@@ -26,6 +26,16 @@ export async function getFamilyForOwner(ownerUserId: string, familyId: string) {
     db.select().from(familyEducationFinances).where(eq(familyEducationFinances.familyId, familyId)).limit(1),
   ]);
   return { family, students: familyStudents, finances: finances[0] };
+}
+
+export async function getFamilyOwnerEmailForMemberView(ownerUserId: string, familyId: string) {
+  const [owner] = await getDb()
+    .select({ email: users.email })
+    .from(families)
+    .innerJoin(users, eq(users.id, families.ownerUserId))
+    .where(and(eq(families.id, familyId), eq(families.ownerUserId, ownerUserId)))
+    .limit(1);
+  return owner?.email ?? null;
 }
 
 export async function getStudentForOwner(ownerUserId: string, familyId: string, studentId: string) {
