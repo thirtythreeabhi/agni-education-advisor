@@ -10,5 +10,5 @@ export function AssociationForm({ consultationId, students }: { consultationId: 
   const [state, formAction] = useActionState<ConsultationActionState, FormData>(associateConsultationAction.bind(null, consultationId), {});
   const router = useRouter();
   useEffect(() => { if (state.redirectTo) router.push(state.redirectTo); }, [router, state.redirectTo]);
-  return <form action={formAction} className="mt-4 grid gap-3"><label>Student<select name="studentId" required defaultValue=""><option value="" disabled>Select a student</option>{students.map((student) => <option value={student.id} key={student.id}>{student.firstName} {student.lastName ?? ""} · {student.familyName}</option>)}</select></label><button type="submit">Associate consultation</button>{state.error ? <p role="alert" className="text-sm text-red-700">{state.error}</p> : null}</form>;
+  return <form action={formAction} className="mt-4 grid gap-3"><label>Student<select name="studentId" required defaultValue=""><option value="" disabled>Select a student</option>{students.map((student) => <option value={student.id} key={student.id}>{student.firstName} {student.lastName ?? ""} · {student.familyName}</option>)}</select></label><button type="submit">Associate consultation</button>{state.error ? <p role="alert" className="form-error text-sm">{state.error}</p> : null}</form>;
 }
