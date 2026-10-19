@@ -12,13 +12,29 @@
   --color-warning: #b76b16;
   --color-category: #7956c6;
   --color-sidebar-muted: color-mix(in srgb, var(--color-secondary) 55%, white);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --text-page-title: 1.875rem;
+  --text-page-title--line-height: 2.25rem;
+  --text-section-title: 1.25rem;
+  --text-section-title--line-height: 1.75rem;
+  --text-card-title: 1rem;
+  --text-card-title--line-height: 1.5rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-supporting: 0.75rem;
+  --text-supporting--line-height: 1rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
 }
 
 :root { color-scheme: light; }
-body { margin: 0; background: var(--color-page); color: var(--color-content); font-family: Arial, sans-serif; }
+body { margin: 0; background: var(--color-page); color: var(--color-content); font-family: var(--font-sans); }
 a { color: inherit; text-decoration: none; }
 .shell { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
-.card { border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); padding: 20px; }
+.card { border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface); padding: 20px; }
+.card-interactive { transition: border-color 150ms ease, background-color 150ms ease; }
+.card-interactive:hover { border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border)); }
+.card-interactive:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .muted { color: var(--color-secondary); }
 .pill { display: inline-block; border-radius: 999px; padding: 4px 9px; font-size: 12px; background: var(--color-page); }
 .pill-confirmed { border: 1px solid var(--color-success); background: color-mix(in srgb, var(--color-success) 10%, white); color: var(--color-content); }
@@ -26,26 +42,76 @@ a { color: inherit; text-decoration: none; }
 .pill-review { background: color-mix(in srgb, var(--color-warning) 10%, white); color: var(--color-content); }
 .grid { display: grid; gap: 12px; }
 label { display: grid; gap: 6px; font-size: 14px; }
-input, select, textarea { border: 1px solid var(--color-border); border-radius: 7px; padding: 10px; font: inherit; color: var(--color-content); background: var(--color-surface); }
-button:not(.button-secondary):not(.secondary-button):not(.button-ghost):not(.button-sidebar):not(.button-avatar), .primary-link { border: 0; border-radius: 8px; padding: 10px 14px; background: var(--color-primary); color: #fff; cursor: pointer; font-weight: 600; transition: background-color 150ms ease, box-shadow 150ms ease; }
-.button-primary { border: 0; background: var(--color-primary); color: #fff; cursor: pointer; font-weight: 600; transition: background-color 150ms ease, box-shadow 150ms ease; }
-button:not(.button-secondary):not(.secondary-button):not(.button-ghost):not(.button-sidebar):not(.button-avatar):hover, .button-primary:hover, .primary-link:hover { background: color-mix(in srgb, var(--color-primary) 88%, black); }
-button:focus-visible, a:focus-visible, .button-primary:focus-visible, .button-secondary:focus-visible, .button-ghost:focus-visible, .button-sidebar:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-button:not(.button-secondary):not(.secondary-button):not(.button-ghost):not(.button-sidebar):not(.button-avatar):active, .button-primary:active, .primary-link:active { background: color-mix(in srgb, var(--color-primary) 80%, black); }
-.button-secondary, .secondary-button { border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 14px; background: var(--color-surface); color: var(--color-content); }
-.button-secondary:hover, .secondary-button:hover { background: var(--color-page); }
-.button-secondary:active, .secondary-button:active { background: var(--color-border); }
-.button-ghost { border: 1px solid transparent; background: transparent; color: var(--color-secondary); }
-.button-ghost:hover { background: var(--color-page); color: var(--color-content); }
-.button-ghost:active { background: var(--color-border); }
-.button-sidebar { border: 1px solid transparent; background: transparent; color: var(--color-sidebar-muted); }
-.button-sidebar:hover { background: rgb(255 255 255 / 8%); color: #fff; }
-.button-sidebar:active { background: rgb(255 255 255 / 14%); }
-.button-avatar { border: 0; background: var(--color-primary); color: white; }
-.button-avatar:hover { background: color-mix(in srgb, var(--color-primary) 88%, black); }
-.primary-link { display: inline-block; }
-.rounded-md.bg-slate-900 { background: var(--color-primary); color: #fff; font-weight: 600; }
+input, select, textarea { border: 1px solid var(--color-secondary); border-radius: 7px; padding: 10px; font: inherit; color: var(--color-content); background: var(--color-surface); }
+
+/*
+ * Compatibility fallback: unclassified buttons remain primary while route
+ * components are migrated. New buttons should name a variant explicitly.
+ * Keeping this in the base layer lets Tailwind utilities override it safely.
+ */
+@layer base {
+  button:not(.button-primary):not(.button-secondary):not(.secondary-button):not(.button-ghost):not(.button-sidebar):not(.button-avatar) {
+    border: 0;
+    border-radius: var(--radius-control);
+    padding: 10px 14px;
+    background: var(--color-primary);
+    color: var(--color-surface);
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  button:not(.button-primary):not(.button-secondary):not(.secondary-button):not(.button-ghost):not(.button-sidebar):not(.button-avatar):hover {
+    background: color-mix(in srgb, var(--color-primary) 88%, black);
+  }
+
+  button:not(.button-primary):not(.button-secondary):not(.secondary-button):not(.button-ghost):not(.button-sidebar):not(.button-avatar):active {
+    background: color-mix(in srgb, var(--color-primary) 80%, black);
+  }
+}
+
+@layer components {
+  .button-primary, .primary-link {
+    border: 0;
+    border-radius: var(--radius-control);
+    padding: 10px 14px;
+    background: var(--color-primary);
+    color: var(--color-surface);
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 150ms ease, box-shadow 150ms ease;
+  }
+  .button-primary:hover, .primary-link:hover { background: color-mix(in srgb, var(--color-primary) 88%, black); }
+  .button-primary:active, .primary-link:active { background: color-mix(in srgb, var(--color-primary) 80%, black); }
+  .button-secondary, .secondary-button {
+    border: 1px solid var(--color-secondary);
+    border-radius: var(--radius-control);
+    padding: 10px 14px;
+    background: var(--color-surface);
+    color: var(--color-content);
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  .button-secondary:hover, .secondary-button:hover { background: var(--color-page); }
+  .button-secondary:active, .secondary-button:active { background: var(--color-border); }
+  .button-ghost { border: 1px solid transparent; background: transparent; color: var(--color-secondary); transition: background-color 150ms ease, color 150ms ease; }
+  .button-ghost:hover { background: var(--color-page); color: var(--color-content); }
+  .button-ghost:active { background: var(--color-border); }
+  .button-sidebar { border: 1px solid transparent; background: transparent; color: var(--color-sidebar-muted); transition: background-color 150ms ease, color 150ms ease; }
+  .button-sidebar:hover { background: rgb(255 255 255 / 8%); color: #fff; }
+  .button-sidebar:active { background: rgb(255 255 255 / 14%); }
+  .button-avatar { border: 0; background: var(--color-primary); color: var(--color-surface); }
+  .button-avatar:hover { background: color-mix(in srgb, var(--color-primary) 88%, black); }
+  .button-icon { display: inline-flex; min-width: 2.5rem; min-height: 2.5rem; align-items: center; justify-content: center; }
+  .primary-link { display: inline-block; }
+  .button-primary:focus-visible, .button-secondary:focus-visible, .button-ghost:focus-visible, .button-sidebar:focus-visible, .button-avatar:focus-visible, .button-icon:focus-visible, .primary-link:focus-visible, .secondary-button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+}
+
+/* Legacy utility selector: retain its teal mapping until route migration. */
+.rounded-md.bg-slate-900 { background: var(--color-primary); color: var(--color-surface); font-weight: 600; }
 .rounded-md.bg-slate-900:hover { background: color-mix(in srgb, var(--color-primary) 88%, black); }
+
+button:focus-visible, a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+button.button-sidebar:focus-visible, .sidebar-nav-item:focus-visible { outline-color: var(--color-sidebar-muted); }
 button:disabled { opacity: .6; cursor: wait; }
 .password-row { display: flex; gap: 8px; }
 .password-row input { flex: 1; }

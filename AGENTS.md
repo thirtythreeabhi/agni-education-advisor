@@ -51,3 +51,12 @@
 - Validate ordinary-user and admin journeys end to end, including ownership/authorization boundaries, persistence, refresh/back navigation, and the resulting user-visible data. A server service, route, or schema without a usable UI path is not a complete feature.
 - Keep domain semantics consistent across capture, storage, and presentation: preserve source units and currency, label minor/major units, show provenance and review state, and do not silently drop collected fields or invent missing facts.
 - Before handoff, trace the real journeys in the running app where possible and pair that check with targeted tests for the critical interactions. Record confirmed defects separately from assumptions or checks blocked by unavailable runtime data/services.
+
+## Design system
+
+- Use the semantic Tailwind v4 tokens and shared CSS variants in `src/app/globals.css`; do not add raw product colors or a UI-library dependency.
+- Use Phosphor icons for new interface icons. Mark decorative icons hidden from assistive technology and label icon-only controls.
+- Prefer the established button variants (`button-primary`, `button-secondary`, `button-ghost`, `button-sidebar`, and `button-icon`) and the shared `.card`, `.status-*`, and form patterns. Add a shared component only when it removes repeated behavior or improves accessibility.
+- Keep the app-shell sidebar fixed and non-scrolling; keep vertical page scrolling in the main content region.
+- Preserve visible keyboard focus, WCAG AA text contrast, semantic status labels, responsive layouts, and native link/button behavior.
+- Keep server-first data access, authorization, privacy, and catalog provenance rules in this file intact during UI changes.

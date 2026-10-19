@@ -2,11 +2,11 @@
 
 ## Purpose and scope
 
-This document records an audit of the current UI and proposes a practical design system for the admin, parent, and student experiences. It is a proposal only: it does not authorize a page redesign or a broad UI migration.
+This document records the UI audit and approved design foundations for the admin, parent, and student experiences. Phase 1 is authorized and applies shared foundations only; it does not migrate application pages.
 
-The audit describes the working tree as inspected on 2026-10-19. The palette and button styles in `src/app/globals.css` are present in the current working tree; they may still be uncommitted changes.
+The audit describes the working tree as inspected on 2026-10-19. The semantic palette was already established before this Phase 1 update.
 
-## Audit: current implementation
+## Audit: implementation before Phase 1
 
 ### Styling architecture and tokens
 
@@ -69,12 +69,12 @@ Keep Tailwind v4 and define system-wide semantic tokens in the existing `@theme`
 | `warning` | `#B76B16` | Review-needed states; use dark text on warning tints |
 | `category` | `#7956C6` | A clearly identified special category, not decoration |
 
-Use small `color-mix()` tints derived from these tokens for status backgrounds. On `page` surfaces, prefer `content` for small text where the exact secondary token falls below AA contrast. On `sidebar`, use a derived light-muted token; the exact secondary token is too dim there. Do not add ad hoc hex values or use status colors for decorative variety.
+Use small `color-mix()` tints derived from these tokens for status backgrounds. On `page` surfaces, prefer `content` for small text because `secondary` reaches only about 4.38:1 on the page canvas. Use `secondary` for input and secondary-button outlines where a visible control boundary needs at least 3:1; keep `border` for card borders and dividers. On `sidebar`, use a derived light-muted token; the exact secondary token is too dim there. Do not add ad hoc hex values or use status colors for decorative variety.
 
 ### 2. Typography and spacing
 
-- Keep the existing system font stack initially; do not add a font dependency as part of tokenization.
-- Document a compact scale: page title 30/36, section title 20/28, card title 16/24, body 14/20, supporting text 12/16. Use a consistent weight and line-height for each role.
+- Keep the existing Arial/Helvetica system stack; do not add a font dependency. Phase 1 formalizes it as the `font-sans` theme token.
+- Use `text-page-title` (30/36), `text-section-title` (20/28), `text-card-title` (16/24), `text-body` (14/20), and `text-supporting` (12/16). Pair each role with a consistent weight; existing pages adopt these utilities during later migrations.
 - Use Tailwind's existing 4px spacing rhythm. Prefer 8, 12, 16, 24, 32, and 40px for common UI gaps and page padding.
 - Establish one responsive page container rule for content width and gutters. Replace inline spacing/layout styles only as pages are migrated, not in a blanket cleanup.
 
@@ -82,13 +82,49 @@ Use small `color-mix()` tints derived from these tokens for status backgrounds. 
 
 Build on the existing CSS and Tailwind setup. Do not add a component library or class-composition dependency.
 
-- **Buttons:** primary (one main action), secondary (outlined/surface action), ghost (low-emphasis action), sidebar (neutral on navy), and icon-only (fixed accessible name and adequate hit area). Keep disabled, hover, active, and visible focus states consistent. Do not style every unclassified button as primary indefinitely; migrate call sites to explicit variants before changing the default.
+- **Buttons:** use `button-primary` for the main action, `button-secondary` for outlined/surface actions, `button-ghost` for low emphasis, `button-sidebar` for neutral actions on navy, `button-avatar` for the user control, and `button-icon` with a visual variant for icon-only controls. Keep disabled, hover, active, and visible focus states consistent. During this phase, unclassified buttons retain a primary compatibility fallback in the base layer so existing routes do not lose styling. New buttons must name a variant; remove the fallback only after route migration.
 - **Cards:** neutral surface, consistent border and radius; an interactive card adds hover/focus feedback without a large shadow or movement. Keep metric cards visually neutral.
 - **Status badges:** semantic status variants for success, warning/review, neutral, and category. Include text labels and use color as a supporting cue.
 - **Forms:** consistent label, input, help, error, and disabled treatments. Associate help and error messages with their fields where practical.
 - **Navigation:** shared sidebar and page navigation rules, clear active state, `aria-current="page"`, visible keyboard focus, and a neutral logout action.
 
 Start with shared CSS variant classes and existing local components. Extract a React primitive only when it removes repeated behavior or improves accessibility; keep native `button` and `Link` semantics intact. Do not introduce a component framework solely to standardize class strings.
+
+#### Approved patterns
+
+Keep native elements and their behavior. Use a semantic variant class, then Tailwind utilities for local layout and sizing:
+
+```tsx
+import { ArrowRight, Bell } from "@phosphor-icons/react";
+
+<button type="submit" className="button-primary rounded-lg px-4 py-2 text-sm">
+  Save changes
+</button>
+<button type="button" className="button-secondary rounded-lg px-4 py-2 text-sm">
+  Cancel
+</button>
+<button type="button" className="button-ghost button-icon rounded-lg" aria-label="Notifications">
+  <Bell size={18} aria-hidden="true" />
+</button>
+<button type="button" className="button-sidebar rounded-lg px-3 py-2 text-left">
+  Switch workspace
+</button>
+<Link className="button-primary inline-flex items-center gap-2 rounded-lg px-4 py-2" href="/consultations">
+  Open consultations <ArrowRight size={16} aria-hidden="true" />
+</Link>
+```
+
+Icon-only controls need a stable accessible name; combine `button-icon` with a visual variant when a 40px minimum target is needed. For cards and statuses, retain the existing CSS primitives and visible labels:
+
+```tsx
+<article className="card">
+  <h2 className="text-card-title font-semibold">Active families</h2>
+  <p className="text-supporting text-secondary">Owner-scoped profiles</p>
+</article>
+<span className="status-warning rounded-md border px-2 py-1 text-sm">Needs review</span>
+```
+
+Use `.card-interactive` only on a genuinely interactive card, and provide the enclosing link/button semantics. Status text must remain understandable without its color.
 
 ### 4. Layout and scrolling conventions
 
@@ -112,9 +148,9 @@ Start with shared CSS variant classes and existing local components. Extract a R
 - Preserve Auth.js gates, family ownership checks, catalog provenance/freshness, and the privacy requirements in the existing root `AGENTS.md`.
 - Do not add dependencies, change copy/behavior, or alter data handling as incidental design-system work.
 
-## Proposed lightweight agent guidance
+## Approved agent guidance (added in Phase 1)
 
-The repository already has a root `AGENTS.md` with extensive security and product requirements. Do not replace it. If this proposal is approved, append a short design-system section like this to that file:
+The repository has a root `AGENTS.md` with security and product requirements. The concise section below has been appended to it; all existing engineering, security, privacy, and product instructions remain intact:
 
 ```md
 ## Design system
@@ -127,43 +163,53 @@ The repository already has a root `AGENTS.md` with extensive security and produc
 - Keep server-first data access, authorization, privacy, and catalog provenance rules from this file intact during UI changes.
 ```
 
-## Decisions needing product/design approval
+## Approved decisions and scope
 
-The palette values are already user-specified and appear in the current working tree, so they do not need to be re-approved. Approval is only needed before changing those base values or introducing additional base colors.
+The user approved the existing semantic palette, Tailwind CSS v4, Phosphor icons, system fonts with a formal type scale, the admin interface as the initial pilot, and shared CSS variants before considering React primitives. Unconnected controls remain unchanged and their functionality is a separate task.
 
-1. **Rollout gate:** agree that the admin area is the visual pilot and approve review before the changes are extended across parent/student pages. The recommendation is one shared foundation for all roles, not separate color systems.
-2. **Typography:** retain Arial/system fonts (recommended for the first pass) or approve a branded typeface and the associated asset/licensing/performance work.
-3. **Component extraction threshold:** agree whether CSS variants are enough initially or whether a small internal Button/Card primitive should be created during the first implementation phase. The recommendation is to start with CSS variants and extract only where shared behavior justifies it.
-4. **Navigation controls:** decide whether currently visible but unconnected controls such as Search, New, date range, and Notifications are intentionally placeholders or should be removed/connected in a separate product task. This audit does not change their behavior.
+Phase 1 requires no further approval. Later page migrations remain gated on review. Changing the palette, adding a UI library/font dependency, changing unconnected controls, or changing product behavior requires a separate decision.
 
 ## Phased implementation plan and validation
 
-### Phase 0 — Baseline and decisions
+### Phase 0 — Baseline and decisions (complete)
 
-- Confirm the palette and scope decisions above.
-- Capture representative admin, catalog, parent, and student screens at desktop and mobile widths. Record current behaviors and protected-route boundaries.
-- Validation: inventory routes/components and baseline screenshots are available; no UI files changed.
+- The decisions above are confirmed.
+- Captured the existing admin dashboard in the running app at its default desktop size, 390×844 (mobile), and 1365×600 (short desktop) before Phase 1 edits. The mobile baseline shows the existing open drawer overlay. Captures are retained in the task record.
+- Parent/student pages remain outside this phase.
 
-### Phase 1 — Foundations
+### Phase 1 — Foundations (complete)
 
-- Finalize semantic tokens, typography roles, spacing/container rules, focus treatment, and button/status conventions in the current Tailwind/CSS architecture.
-- Remove or map legacy aliases deliberately; do not change behavior as part of this cleanup.
-- Validation: no new dependency; token inventory is the single source of truth; contrast checked for every text/status pairing; `npm run typecheck`, `npm run lint`, and `npm test` pass.
+- Formalize the existing semantic palette, system font, typography and radius tokens, focus treatment, and explicit CSS variants in the current Tailwind/CSS architecture.
+- Add the design-system guidance to the existing `AGENTS.md` without removing or weakening its engineering/security rules. Document reusable button, card, and status patterns with concrete code examples.
+- Preserve compatibility styles during migration: generic buttons remain primary until their route is migrated; retain legacy `.primary-link`, `.secondary-button`, and `.rounded-md.bg-slate-900` mappings and document them.
+- Do not edit application route or component files in this phase.
+- Validation results are listed below.
 
-### Phase 2 — Admin pilot
+#### Phase 1 validation results
+
+- Baseline admin screenshots were captured before edits at the default desktop viewport, 390×844, and 1365×600. Post-change responsive checks covered the same widths/heights. At mobile width, the dashboard fits the viewport with its menu closed; the main content scrolls vertically. At 1365×600, the compact sidebar remains visible and the logout area stays at its bottom.
+- Keyboard check: Tab focus is visible on the workspace selector. The app-shell navigation and dashboard remained available; no control behavior was changed.
+- Palette contrast calculation: primary on surface is 7.37:1; secondary text on surface is 4.76:1; secondary on page is 4.38:1, so use content text on page for small copy; secondary control outlines on surface are 4.76:1; sidebar-muted against navy exceeds 8:1. Status labels use content text on tinted backgrounds. The pale border token is reserved for cards/dividers because it is only 1.29:1 against white.
+- `npm test`: passed, 66 tests passed; 9 database integration tests skipped because `TEST_DATABASE_URL` was unset.
+- `npm run typecheck`: passed after the build completed. An initial parallel invocation raced Next.js `.next/types` regeneration and failed on missing generated files; the sequential rerun passed.
+- `npm run lint`: passed with two existing warnings in `eslint.config.mjs` and `postcss.config.mjs`.
+- `npm run build`: passed. Next emitted existing warnings that `experimental.useWasmBinary` is unsupported on this platform.
+- Browser screenshots came from the existing browser session. The browser's stylesheet did not expose the newly compiled theme variables after reload, so rendered verification of the changed CSS is limited to successful production compilation and the browser's layout/keyboard checks.
+
+### Phase 2 — Admin pilot (awaiting approval)
 
 - Migrate the app shell, admin overview, catalog operations, and consultation review to the shared foundations and variants.
 - Preserve authorization, route targets, import/review states, provenance labels, and existing data semantics.
 - Validation: compare desktop/mobile screenshots; keyboard-test navigation and forms; check short viewport scrolling; confirm ordinary-user denial and admin access; verify empty/loading/error/success states.
 
-### Phase 3 — Parent and student rollout
+### Phase 3 — Parent and student rollout (future phase)
 
 - Migrate family, finance, student, consultation-detail, and shortlist screens using the same tokens and components. Keep sensitive data visibility and owner boundaries unchanged.
 - Validation: exercise owner/admin access boundaries and the main create/edit/review journeys; verify source, currency, and confirmation labels remain visible; repeat responsive and keyboard checks.
 
 ### Phase 4 — Adoption guardrails
 
-- Add the approved concise design-system section to root `AGENTS.md`. Optionally add lint checks only after legacy styles have been migrated, so checks do not create noisy exceptions.
+- Optionally add lint checks only after legacy styles have been migrated, so checks do not create noisy exceptions.
 - Validation: search for direct palette colors and legacy variants; document intentional exceptions; rerun `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` when practical.
 
 ## Acceptance criteria
